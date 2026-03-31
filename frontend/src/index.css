@@ -1,0 +1,140 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    @apply bg-slate-950 text-slate-100 antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-slate-900;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-700 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-500;
+  }
+}
+
+@layer components {
+  /* ── Cards ─────────────────────────────────────── */
+  .card {
+    @apply bg-slate-900 border border-slate-800 rounded-xl p-6;
+  }
+
+  /* ── Buttons ────────────────────────────────────── */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2
+           bg-blue-600 hover:bg-blue-500 active:scale-95
+           text-white font-semibold px-4 py-2.5 rounded-lg
+           transition-all duration-200
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2
+           bg-slate-800 hover:bg-slate-700
+           text-slate-100 font-medium px-4 py-2.5 rounded-lg
+           transition-all duration-200 border border-slate-700
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2
+           bg-red-600/20 hover:bg-red-600/30
+           text-red-400 border border-red-600/30
+           font-medium px-4 py-2.5 rounded-lg
+           transition-all duration-200
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-success {
+    @apply inline-flex items-center justify-center gap-2
+           bg-emerald-600 hover:bg-emerald-500 active:scale-95
+           text-white font-semibold px-4 py-2.5 rounded-lg
+           transition-all duration-200
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100;
+  }
+
+  /* ── Inputs ─────────────────────────────────────── */
+  .input {
+    @apply w-full bg-slate-800 border border-slate-700 rounded-lg
+           px-4 py-2.5 text-slate-100 placeholder-slate-500
+           focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500
+           transition-all duration-200;
+  }
+
+  .label {
+    @apply block text-sm font-medium text-slate-400 mb-1.5;
+  }
+
+  /* ── Badges ─────────────────────────────────────── */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-success {
+    @apply badge bg-emerald-900/50 text-emerald-400 border border-emerald-800/50;
+  }
+
+  .badge-danger {
+    @apply badge bg-red-900/50 text-red-400 border border-red-800/50;
+  }
+
+  .badge-warning {
+    @apply badge bg-amber-900/50 text-amber-400 border border-amber-800/50;
+  }
+
+  .badge-info {
+    @apply badge bg-blue-900/50 text-blue-400 border border-blue-800/50;
+  }
+
+  .badge-neutral {
+    @apply badge bg-slate-800 text-slate-400 border border-slate-700;
+  }
+
+  /* ── Stat card shorthand ─────────────────────────── */
+  .stat-card {
+    @apply card flex flex-col gap-2;
+  }
+
+  /* ── Misc ───────────────────────────────────────── */
+  .face-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+}
+
+@layer utilities {
+  /* Fade-in animation used across pages */
+  .animate-fade-in {
+    animation: fadeInUp 0.35s ease-out both;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
