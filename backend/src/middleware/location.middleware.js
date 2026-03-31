@@ -12,9 +12,9 @@ const getDistanceMeters = (lat1, lon1, lat2, lon2) => {
   return R * c;
 };
 
-const OFFICE_LAT    = parseFloat(process.env.OFFICE_LAT    || '23.0225');
-const OFFICE_LNG    = parseFloat(process.env.OFFICE_LNG    || '72.5714');
-const OFFICE_RADIUS = parseFloat(process.env.OFFICE_RADIUS_METERS || '200');
+const OFFICE_LAT = parseFloat(process.env.OFFICE_LAT || '23.063596');
+const OFFICE_LNG = parseFloat(process.env.OFFICE_LNG || '72.651390');
+const OFFICE_RADIUS = parseFloat(process.env.OFFICE_RADIUS_METERS || '100');
 
 const validateLocation = (req, res, next) => {
   const { latitude, longitude } = req.body.location || {};

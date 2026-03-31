@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
-import { employeeAPI } from '../utils/api/api';
+import { employeeAPI, resolveUploadUrl } from '../utils/api/api';
 import toast from 'react-hot-toast';
 
 export default function EmployeeDetailPage() {
@@ -56,10 +56,10 @@ export default function EmployeeDetailPage() {
           <h2 className="text-lg font-semibold text-white mb-4">Personal Information</h2>
           <div className="space-y-3 text-sm">
             <div><span className="text-slate-400">Email:</span> <span className="text-white">{employee.email}</span></div>
-            <div><span className="text-slate-400">Phone:</span> <span className="text-white">{employee.phone || 'N/A'}</span></div>
+            <div><span className="text-slate-400">Phone:</span> <span className="text-white">{employee.mobile || 'N/A'}</span></div>
             <div><span className="text-slate-400">Department:</span> <span className="text-white">{employee.department}</span></div>
-            <div><span className="text-slate-400">Position:</span> <span className="text-white">{employee.position || 'N/A'}</span></div>
-            <div><span className="text-slate-400">Joined:</span> <span className="text-white">{format(new Date(employee.createdAt), 'MMMM dd, yyyy')}</span></div>
+            <div><span className="text-slate-400">Position:</span> <span className="text-white">{employee.designation || 'N/A'}</span></div>
+            <div><span className="text-slate-400">Joined:</span> <span className="text-white">{format(new Date(employee.joiningDate || employee.createdAt), 'MMMM dd, yyyy')}</span></div>
             <div><span className="text-slate-400">Status:</span> <span className={`font-semibold ${employee.isActive ? 'text-green-400' : 'text-red-400'}`}>{employee.isActive ? 'Active' : 'Inactive'}</span></div>
           </div>
         </div>
@@ -67,9 +67,9 @@ export default function EmployeeDetailPage() {
         <div className="card">
           <h2 className="text-lg font-semibold text-white mb-4">Face Recognition</h2>
           <div className="space-y-3">
-            {employee.faceDescriptors && employee.faceDescriptors.length > 0 ? (
+            {employee.faceEnrolled ? (
               <>
-                <p className="text-sm text-green-400">✓ Face enrolled ({employee.faceDescriptors.length} samples)</p>
+                <p className="text-sm text-green-400">✓ Face enrolled successfully</p>
                 <button onClick={() => navigate(`/employees/${id}/face-enroll`)} className="btn-secondary w-full">
                   🔄 Re-enroll Face
                 </button>
@@ -89,7 +89,7 @@ export default function EmployeeDetailPage() {
       {employee.photo && (
         <div className="card text-center">
           <h2 className="text-lg font-semibold text-white mb-4">Photo</h2>
-          <img src={`/${employee.photo}`} alt={employee.name} className="w-32 h-32 rounded-lg object-cover mx-auto" />
+          <img src={resolveUploadUrl(employee.photo)} alt={employee.name} className="w-32 h-32 rounded-lg object-cover mx-auto" />
         </div>
       )}
     </div>

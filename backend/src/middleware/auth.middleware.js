@@ -1,6 +1,8 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User.model');
 
+const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey123';
+
 // Verify JWT token
 const authenticate = async (req, res, next) => {
   try {
@@ -13,7 +15,7 @@ const authenticate = async (req, res, next) => {
       return res.status(401).json({ success: false, message: 'Authentication required. No token provided.' });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET);
     const user = await User.findById(decoded.id).populate('employee');
 
     if (!user || !user.isActive) {

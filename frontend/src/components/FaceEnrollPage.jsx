@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Webcam from 'react-webcam';
 import toast from 'react-hot-toast';
 import { employeeAPI } from '../utils/api/api';
-import { loadModels, detectFace, captureSnapshot } from './faceRecognition';
+import { loadModels, detectFace, captureSnapshot, getModelLoadError } from './faceRecognition';
 
 const ANGLES = [
   { key: 'front', label: 'Front',      instruction: 'Look straight at the camera', emoji: '😐' },
@@ -24,11 +24,20 @@ export default function FaceEnrollPage() {
   const [capturing, setCapturing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [modelsReady, setModelsReady] = useState(false);
+  const [modelError, setModelError] = useState('');
   const [countdown, setCountdown] = useState(null);
 
   useEffect(() => {
     employeeAPI.get(id).then(({ data }) => setEmployee(data.data));
-    loadModels().then(ok => setModelsReady(ok));
+    loadModels().then(ok => {
+      setModelsReady(ok);
+      if (!ok) {
+        const err = getModelLoadError();
+        const message = err?.message || 'Face models failed to load.';
+        setModelError(message);
+        toast.error('Face models failed to load. Check internet or add model files in frontend/public/models.');
+      }
+    });
   }, [id]);
 
   const currentAngle = ANGLES[currentAngleIdx];
@@ -153,6 +162,13 @@ export default function FaceEnrollPage() {
                 '📸 Capture This Angle'
               )}
             </button>
+            {!modelsReady && (
+              <div className="mt-3 rounded-lg border border-amber-800/40 bg-amber-950/20 px-3 py-2 text-xs text-amber-300">
+                Face model files are not loaded yet, so capture is disabled.
+                {modelError ? ` Error: ${modelError}` : ''}
+                {' '}Add the face-api model files to `frontend/public/models` or allow access to jsDelivr.
+              </div>
+            )}
             {!allCaptured && capturedAngles[currentAngle.key] && currentAngleIdx < ANGLES.length - 1 && (
               <button onClick={() => setCurrentAngleIdx(i => i + 1)} className="btn-secondary w-full mt-2">
                 Next Angle →

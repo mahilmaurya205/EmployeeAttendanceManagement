@@ -42,6 +42,33 @@ export default function AdminUsersPage() {
     }
   };
 
+  const handleDeleteUser = async (user) => {
+    if (!window.confirm(`Delete ${user.name} permanently?${user.employee ? ' Linked employee and attendance data will also be deleted.' : ''}`)) return;
+    try {
+      await adminAPI.deleteUser(user._id);
+      toast.success('User deleted');
+      fetchUsers();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to delete user');
+    }
+  };
+
+  const handleResetPassword = async (user) => {
+    const newPassword = window.prompt(`Set new password for ${user.name}`, '');
+    if (newPassword == null) return;
+    if (newPassword.trim().length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+
+    try {
+      await adminAPI.resetPassword(user._id, newPassword.trim());
+      toast.success('Password updated successfully');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to update password');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center py-16">
@@ -74,10 +101,15 @@ export default function AdminUsersPage() {
                 <td className="py-3 px-4">{user.name}</td>
                 <td className="py-3 px-4">{user.email}</td>
                 <td className="py-3 px-4">
-                  <select value={user.role} onChange={(e) => handleUpdateRole(user._id, e.target.value)} className="input input-sm w-24">
-                    <option value="admin">Admin</option>
-                    <option value="employee">Employee</option>
-                  </select>
+                  {user.role === 'Admin' || user.employee ? (
+                    <span className="text-sm font-medium text-slate-200">{user.role}</span>
+                  ) : (
+                    <select value={user.role} onChange={(e) => handleUpdateRole(user._id, e.target.value)} className="input input-sm w-32">
+                      <option value="Manager">Manager</option>
+                      <option value="HR">HR</option>
+                      <option value="Supervisor">Supervisor</option>
+                    </select>
+                  )}
                 </td>
                 <td className="py-3 px-4">
                   <span className={`px-2 py-1 rounded text-xs font-semibold ${user.isActive ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
@@ -85,9 +117,19 @@ export default function AdminUsersPage() {
                   </span>
                 </td>
                 <td className="py-3 px-4">
-                  <button onClick={() => handleToggleActive(user._id)} className="btn-secondary btn-sm">
-                    {user.isActive ? 'Deactivate' : 'Activate'}
-                  </button>
+                  <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
+                    <button onClick={() => handleResetPassword(user)} className="btn-primary btn-sm whitespace-nowrap">
+                      Set Password
+                    </button>
+                    <button onClick={() => handleToggleActive(user._id)} className="btn-secondary btn-sm whitespace-nowrap">
+                      {user.isActive ? 'Deactivate' : 'Activate'}
+                    </button>
+                    {user.role !== 'Admin' && (
+                      <button onClick={() => handleDeleteUser(user)} className="btn-danger btn-sm whitespace-nowrap">
+                        Delete
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}

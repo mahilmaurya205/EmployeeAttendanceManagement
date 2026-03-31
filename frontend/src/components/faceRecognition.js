@@ -1,26 +1,38 @@
 import * as faceapi from 'face-api.js';
 
 let modelsLoaded = false;
-const MODEL_URL = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/weights';
+let modelLoadError = null;
+const MODEL_URL = '/models';
+
+const loadFromUri = async (baseUrl) => {
+  await Promise.all([
+    faceapi.nets.tinyFaceDetector.loadFromUri(baseUrl),
+    faceapi.nets.faceLandmark68Net.loadFromUri(baseUrl),
+    faceapi.nets.faceRecognitionNet.loadFromUri(baseUrl),
+    faceapi.nets.faceExpressionNet.loadFromUri(baseUrl),
+  ]);
+};
 
 // ─── Load Models ─────────────────────────────────────────────────────────────
 export const loadModels = async () => {
   if (modelsLoaded) return true;
+  modelLoadError = null;
+
   try {
-    await Promise.all([
-      faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-      faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-      faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
-      faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL),
-    ]);
+    await loadFromUri(MODEL_URL);
     modelsLoaded = true;
-    console.log('✅ Face-api models loaded');
+    modelLoadError = null;
+    console.log(`✅ Face-api models loaded from ${MODEL_URL}`);
     return true;
   } catch (err) {
-    console.error('❌ Failed to load face-api models:', err);
-    return false;
+    modelLoadError = err;
   }
+
+  console.error('❌ Failed to load face-api models:', modelLoadError);
+  return false;
 };
+
+export const getModelLoadError = () => modelLoadError;
 
 // ─── Detect a single face and get descriptor ─────────────────────────────────
 export const detectFace = async (videoElement) => {

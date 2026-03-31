@@ -6,18 +6,26 @@ import useAuthStore from '../store/authStore';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 
-const StatCard = ({ title, value, sub, color, icon }) => (
-  <div className="card flex items-start justify-between">
-    <div>
-      <p className="text-sm text-slate-400 mb-1">{title}</p>
-      <p className={`text-3xl font-bold ${color}`}>{value}</p>
-      {sub && <p className="text-xs text-slate-500 mt-1">{sub}</p>}
+const StatCard = ({ title, value, sub, color, icon, to }) => {
+  const content = (
+    <div className="card flex items-start justify-between h-full transition-colors hover:border-blue-800/50">
+      <div>
+        <p className="text-sm text-slate-400 mb-1">{title}</p>
+        <p className={`text-3xl font-bold ${color}`}>{value}</p>
+        {sub && <p className="text-xs text-slate-500 mt-1">{sub}</p>}
+      </div>
+      <div className={`p-3 rounded-xl ${color.replace('text-', 'bg-').replace('-400', '-900/50')}`}>
+        {icon}
+      </div>
     </div>
-    <div className={`p-3 rounded-xl ${color.replace('text-', 'bg-').replace('-400', '-900/50')}`}>
-      {icon}
-    </div>
-  </div>
-);
+  );
+
+  if (to) {
+    return <Link to={to}>{content}</Link>;
+  }
+
+  return content;
+};
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
@@ -130,21 +138,25 @@ export default function DashboardPage() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard
               title="Total Employees" value={stats.employees.total} sub="Active"
+              to="/employees"
               color="text-blue-400"
               icon={<svg className="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>}
             />
             <StatCard
               title="Present Today" value={stats.today.present} sub="Marked attendance"
+              to="/employees?attendanceStatus=present"
               color="text-emerald-400"
               icon={<svg className="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
             />
             <StatCard
               title="Absent Today" value={stats.today.absent} sub="Not marked"
+              to="/employees?attendanceStatus=absent"
               color="text-red-400"
               icon={<svg className="w-5 h-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
             />
             <StatCard
               title="Late Today" value={stats.today.late} sub="Arrived late"
+              to="/employees?attendanceStatus=late"
               color="text-amber-400"
               icon={<svg className="w-5 h-5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>}
             />

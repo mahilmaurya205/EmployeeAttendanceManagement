@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Webcam from 'react-webcam';
 import toast from 'react-hot-toast';
-import { employeeAPI } from '../utils/api/api';
+import { employeeAPI, resolveUploadUrl } from '../utils/api/api';
 
 const FormField = ({ label, error, children }) => (
   <div>
@@ -22,6 +22,7 @@ export default function EmployeeFormPage() {
     name: '', employeeCode: '', email: '', mobile: '', department: 'IT Software',
     designation: '', aadharNo: '', panNo: '', password: '',
     address: { street: '', city: '', state: '', pincode: '' },
+    workSchedule: { shiftStart: '09:00', shiftEnd: '18:00' },
   });
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
@@ -39,14 +40,19 @@ export default function EmployeeFormPage() {
           department: emp.department || 'IT Software', designation: emp.designation || '',
           aadharNo: '', panNo: '', password: '',
           address: emp.address || { street: '', city: '', state: '', pincode: '' },
+          workSchedule: {
+            shiftStart: emp.workSchedule?.shiftStart || '09:00',
+            shiftEnd: emp.workSchedule?.shiftEnd || '18:00',
+          },
         });
-        if (emp.photo) setPhotoPreview(`/${emp.photo}`);
+        if (emp.photo) setPhotoPreview(resolveUploadUrl(emp.photo));
       });
     }
   }, [id, isEdit]);
 
   const set = (key, value) => setForm(f => ({ ...f, [key]: value }));
   const setAddr = (key, value) => setForm(f => ({ ...f, address: { ...f.address, [key]: value } }));
+  const setWorkSchedule = (key, value) => setForm(f => ({ ...f, workSchedule: { ...f.workSchedule, [key]: value } }));
 
   const validate = () => {
     const e = {};
@@ -54,6 +60,8 @@ export default function EmployeeFormPage() {
     if (!form.employeeCode.trim()) e.employeeCode = 'Employee code required';
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Valid email required';
     if (!/^[6-9]\d{9}$/.test(form.mobile)) e.mobile = 'Valid 10-digit Indian mobile required';
+    if (!form.workSchedule.shiftStart) e.shiftStart = 'Start time is required';
+    if (!form.workSchedule.shiftEnd) e.shiftEnd = 'End time is required';
     if (!isEdit) {
       if (!/^\d{12}$/.test(form.aadharNo)) e.aadharNo = 'Aadhar must be 12 digits';
       if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(form.panNo.toUpperCase())) e.panNo = 'Invalid PAN format (e.g. ABCDE1234F)';
@@ -83,7 +91,7 @@ export default function EmployeeFormPage() {
     setLoading(true);
     const formData = new FormData();
     Object.entries(form).forEach(([k, v]) => {
-      if (k === 'address') formData.append(k, JSON.stringify(v));
+      if (k === 'address' || k === 'workSchedule') formData.append(k, JSON.stringify(v));
       else if (v) formData.append(k, v);
     });
     if (photoFile) formData.append('photo', photoFile);
@@ -179,6 +187,29 @@ export default function EmployeeFormPage() {
               </FormField>
             )}
           </div>
+        </div>
+
+        <div className="card">
+          <h2 className="font-semibold text-white mb-4">Work Schedule</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormField label="Shift Start *" error={errors.shiftStart}>
+              <input
+                className="input"
+                type="time"
+                value={form.workSchedule.shiftStart}
+                onChange={e => setWorkSchedule('shiftStart', e.target.value)}
+              />
+            </FormField>
+            <FormField label="Shift End *" error={errors.shiftEnd}>
+              <input
+                className="input"
+                type="time"
+                value={form.workSchedule.shiftEnd}
+                onChange={e => setWorkSchedule('shiftEnd', e.target.value)}
+              />
+            </FormField>
+          </div>
+          <p className="text-xs text-slate-500 mt-3">Late attendance is counted only if punch-in happens more than 30 minutes after shift start.</p>
         </div>
 
         {/* Identity */}

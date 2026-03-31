@@ -1,6 +1,7 @@
 import axios from 'axios';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
+const API_ROOT = API_BASE.endsWith('/api') ? API_BASE.slice(0, -4) : API_BASE;
 
 const api = axios.create({
   baseURL: API_BASE,
@@ -45,6 +46,8 @@ export const employeeAPI = {
   create: (formData) => api.post('/employees', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   update: (id, formData) => api.put(`/employees/${id}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   delete: (id) => api.delete(`/employees/${id}`),
+  toggleActive: (id) => api.put(`/employees/${id}/toggle-active`),
+  deletePermanent: (id) => api.delete(`/employees/${id}/permanent`),
   enrollFace: (id, data) => api.post(`/employees/${id}/face-enroll`, data),
   getFaceDescriptors: (id) => api.get(`/employees/${id}/face-descriptors`),
   getAllFaceDescriptors: () => api.get('/employees/all/face-descriptors'),
@@ -72,6 +75,15 @@ export const adminAPI = {
   updateRole: (id, role) => api.put(`/admin/users/${id}/role`, { role }),
   toggleActive: (id) => api.put(`/admin/users/${id}/toggle-active`),
   createUser: (data) => api.post('/admin/users', data),
+  deleteUser: (id) => api.delete(`/admin/users/${id}`),
+  resetPassword: (id, newPassword) => api.put(`/admin/users/${id}/password`, { newPassword }),
+};
+
+export const resolveUploadUrl = (assetPath) => {
+  if (!assetPath) return null;
+  if (/^https?:\/\//i.test(assetPath)) return assetPath;
+  const normalized = assetPath.startsWith('/') ? assetPath : `/${assetPath}`;
+  return `${API_ROOT}${normalized}`;
 };
 
 export default api;

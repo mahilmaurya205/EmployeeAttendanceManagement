@@ -95,20 +95,26 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage />} />
-      <Route element={<ProtectedRoute />}>
+        <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
           <Route index element={<DashboardPage />} />
-          <Route path="employees">
-            <Route index element={<EmployeeListPage />} />
-            <Route path="new" element={<EmployeeFormPage />} />
-            <Route path=":id" element={<EmployeeDetailPage />} />
-            <Route path=":id/edit" element={<EmployeeFormPage />} />
-            <Route path=":id/face-enroll" element={<FaceEnrollPage />} />
+          <Route element={<ProtectedRoute roles={['Admin', 'Manager', 'HR', 'Supervisor']} />}>
+            <Route path="employees">
+              <Route index element={<EmployeeListPage />} />
+              <Route path="new" element={<EmployeeFormPage />} />
+              <Route path=":id" element={<EmployeeDetailPage />} />
+              <Route path=":id/edit" element={<EmployeeFormPage />} />
+              <Route path=":id/face-enroll" element={<FaceEnrollPage />} />
+            </Route>
+            <Route path="attendance/logs" element={<AttendanceLogPage />} />
+            <Route path="reports/monthly" element={<MonthlyReportPage />} />
           </Route>
-          <Route path="attendance" element={<AttendancePage />} />
-          <Route path="attendance/logs" element={<AttendanceLogPage />} />
-          <Route path="reports/monthly" element={<MonthlyReportPage />} />
-          <Route path="admin/users" element={<AdminUsersPage />} />
+          <Route element={<ProtectedRoute roles={['Admin']} />}>
+            <Route path="admin/users" element={<AdminUsersPage />} />
+          </Route>
+          <Route element={<ProtectedRoute roles={['Employee', 'Admin', 'Manager', 'HR', 'Supervisor']} />}>
+            <Route path="attendance" element={<AttendancePage />} />
+          </Route>
           <Route path="profile" element={<ProfilePage />} />
         </Route>
       </Route>

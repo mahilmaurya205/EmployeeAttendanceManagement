@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { employeeAPI } from '../utils/api/api';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { attendanceAPI, employeeAPI, resolveUploadUrl } from '../utils/api/api';
 import useAuthStore from '../store/authStore';
 import toast from 'react-hot-toast';
-import { format } from 'date-fns';
 
 const Avatar = ({ name, photo, size = 8 }) => {
-  if (photo) return <img src={`/${photo}`} alt={name} className={`w-${size} h-${size} rounded-full object-cover`} />;
+  if (photo) return <img src={resolveUploadUrl(photo)} alt={name} className={`w-${size} h-${size} rounded-full object-cover`} />;
   return (
     <div className={`w-${size} h-${size} rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm`}>
       {name?.charAt(0).toUpperCase()}
@@ -16,7 +15,8 @@ const Avatar = ({ name, photo, size = 8 }) => {
 
 export default function EmployeeListPage() {
   const navigate = useNavigate();
-  const { canModify } = useAuthStore();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { canModify, isAdmin } = useAuthStore();
 
   const [employees, setEmployees] = useState([]);
   const [pagination, setPagination] = useState({});
@@ -24,23 +24,67 @@ export default function EmployeeListPage() {
   const [search, setSearch] = useState('');
   const [department, setDepartment] = useState('');
   const [page, setPage] = useState(1);
+  const attendanceStatus = searchParams.get('attendanceStatus') || '';
+  const today = new Date().toISOString().split('T')[0];
 
   const fetchEmployees = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await employeeAPI.list({ search, department, page, limit: 12 });
-      setEmployees(data.data);
-      setPagination(data.pagination);
+      if (attendanceStatus) {
+        const { data } = await attendanceAPI.summaryForDate(today, { department });
+        let filtered = data.data.filter((summary) => summary.employee);
+
+        if (attendanceStatus === 'present') {
+          filtered = filtered.filter((summary) => ['Present', 'Half Day'].includes(summary.status));
+        } else if (attendanceStatus === 'absent') {
+          filtered = filtered.filter((summary) => summary.status === 'Absent');
+        } else if (attendanceStatus === 'late') {
+          filtered = filtered.filter((summary) => summary.isLate);
+        }
+
+        if (search.trim()) {
+          const searchTerm = search.trim().toLowerCase();
+          filtered = filtered.filter(({ employee }) =>
+            [employee.name, employee.employeeCode, employee.email, employee.mobile]
+              .filter(Boolean)
+              .some((value) => String(value).toLowerCase().includes(searchTerm))
+          );
+        }
+
+        const pageSize = 12;
+        const total = filtered.length;
+        const startIndex = (page - 1) * pageSize;
+        const pageItems = filtered.slice(startIndex, startIndex + pageSize).map((summary) => ({
+          ...summary.employee,
+          attendanceStatus: summary.status,
+          isLate: summary.isLate,
+          lateByMinutes: summary.lateByMinutes,
+          totalWorkMinutes: summary.totalWorkMinutes,
+        }));
+
+        setEmployees(pageItems);
+        setPagination({
+          page,
+          limit: pageSize,
+          total,
+          pages: Math.max(1, Math.ceil(total / pageSize)),
+        });
+      } else {
+        const { data } = await employeeAPI.list({ search, department, page, limit: 12 });
+        setEmployees(data.data);
+        setPagination(data.pagination);
+      }
     } catch (err) {
       toast.error('Failed to load employees');
     } finally {
       setLoading(false);
     }
-  }, [search, department, page]);
+  }, [attendanceStatus, department, page, search, today]);
 
   useEffect(() => { fetchEmployees(); }, [fetchEmployees]);
+  useEffect(() => { setPage(1); }, [attendanceStatus]);
 
-  const handleDelete = async (id) => {
+  const handleDeactivate = async (id) => {
     if (!window.confirm('Deactivate this employee?')) return;
     try {
       await employeeAPI.delete(id);
@@ -49,7 +93,37 @@ export default function EmployeeListPage() {
     } catch { toast.error('Failed'); }
   };
 
+  const handleToggleActive = async (id, active) => {
+    if (!window.confirm(`${active ? 'Deactivate' : 'Activate'} this employee?`)) return;
+    try {
+      await employeeAPI.toggleActive(id);
+      toast.success(`Employee ${active ? 'deactivated' : 'activated'}`);
+      fetchEmployees();
+    } catch {
+      toast.error('Failed to update employee status');
+    }
+  };
+
+  const handlePermanentDelete = async (id) => {
+    if (!window.confirm('Delete this employee permanently? This will also remove attendance history and cannot be undone.')) return;
+    try {
+      await employeeAPI.deletePermanent(id);
+      toast.success('Employee deleted permanently');
+      fetchEmployees();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete employee permanently');
+    }
+  };
+
   const deptBadge = (dept) => dept === 'IT Software' ? 'badge-info' : 'badge-warning';
+  const attendanceFilterLabel = attendanceStatus ? `${attendanceStatus.charAt(0).toUpperCase()}${attendanceStatus.slice(1)} Today` : '';
+  const updateAttendanceFilter = (value) => {
+    const next = new URLSearchParams(searchParams);
+    if (value) next.set('attendanceStatus', value);
+    else next.delete('attendanceStatus');
+    setSearchParams(next);
+    setPage(1);
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -91,7 +165,26 @@ export default function EmployeeListPage() {
           <option value="IT Software">IT Software</option>
           <option value="IT Hardware">IT Hardware</option>
         </select>
+        <select
+          className="input w-full sm:w-48"
+          value={attendanceStatus}
+          onChange={e => updateAttendanceFilter(e.target.value)}
+        >
+          <option value="">All Attendance</option>
+          <option value="present">Present Today</option>
+          <option value="absent">Absent Today</option>
+          <option value="late">Late Today</option>
+        </select>
       </div>
+
+      {attendanceFilterLabel && (
+        <div className="flex items-center gap-3 rounded-xl border border-blue-800/40 bg-blue-950/20 px-4 py-3">
+          <span className="text-sm font-medium text-blue-300">{attendanceFilterLabel}</span>
+          <button onClick={() => updateAttendanceFilter('')} className="text-xs text-slate-400 hover:text-white">
+            Clear filter
+          </button>
+        </div>
+      )}
 
       {/* Grid */}
       {loading ? (
@@ -150,14 +243,35 @@ export default function EmployeeListPage() {
                   <div className={`w-1.5 h-1.5 rounded-full ${emp.faceEnrolled ? 'bg-emerald-400' : 'bg-red-400'}`} />
                   <span className="text-xs text-slate-500">{emp.faceEnrolled ? 'Face enrolled' : 'No face data'}</span>
                 </div>
+                {emp.attendanceStatus && (
+                  <span className={`badge text-xs ${emp.attendanceStatus === 'Absent' ? 'badge-danger' : emp.isLate ? 'badge-warning' : 'badge-success'}`}>
+                    {emp.isLate ? `Late${emp.lateByMinutes ? ` (${emp.lateByMinutes}m)` : ''}` : emp.attendanceStatus}
+                  </span>
+                )}
                 {canModify() && (
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
                     <button onClick={() => navigate(`/employees/${emp._id}/edit`)} className="p-1.5 text-slate-400 hover:text-blue-400 hover:bg-blue-900/30 rounded-lg transition-colors">
                       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                     </button>
-                    <button onClick={() => handleDelete(emp._id)} className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-900/30 rounded-lg transition-colors">
+                    <button
+                      onClick={() => handleToggleActive(emp._id, emp.isActive)}
+                      className={`p-1.5 rounded-lg transition-colors ${emp.isActive ? 'text-slate-400 hover:text-amber-400 hover:bg-amber-900/30' : 'text-slate-400 hover:text-emerald-400 hover:bg-emerald-900/30'}`}
+                      title={emp.isActive ? 'Deactivate employee' : 'Activate employee'}
+                    >
+                      {emp.isActive ? (
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-12.728 12.728M5.636 5.636l12.728 12.728" /></svg>
+                      ) : (
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                      )}
+                    </button>
+                    <button onClick={() => handleDeactivate(emp._id)} className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-900/30 rounded-lg transition-colors" title="Soft deactivate employee">
                       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                     </button>
+                    {isAdmin() && (
+                      <button onClick={() => handlePermanentDelete(emp._id)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-950/40 rounded-lg transition-colors" title="Delete permanently">
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                      </button>
+                    )}
                   </div>
                 )}
               </div>

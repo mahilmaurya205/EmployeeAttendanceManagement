@@ -67,10 +67,22 @@ export default function AttendancePage() {
     setModelsReady(ok);
     if (ok) {
       try {
-        const { data } = await employeeAPI.getAllFaceDescriptors();
-        const descriptors = buildLabeledDescriptors(data.data);
+        const employeeId = typeof user?.employee === 'object' ? user?.employee?._id : user?.employee;
+        if (!employeeId) {
+          setLabeledDescriptors([]);
+          return;
+        }
+
+        const { data } = await employeeAPI.getFaceDescriptors(employeeId);
+        const descriptors = buildLabeledDescriptors([{
+          _id: employeeId,
+          name: user?.name || 'Employee',
+          faceDescriptors: data.data?.faceDescriptors || [],
+        }]);
         setLabeledDescriptors(descriptors);
-      } catch (_) {}
+      } catch (_) {
+        setLabeledDescriptors([]);
+      }
     }
   };
 
@@ -80,7 +92,7 @@ export default function AttendancePage() {
     initFace();
     const interval = setInterval(fetchToday, 30000);
     return () => { clearInterval(interval); clearInterval(scanInterval.current); };
-  }, []);
+  }, [user]);
 
   // Face scan loop
   const startFaceScan = useCallback(() => {
@@ -145,6 +157,7 @@ export default function AttendancePage() {
         location: { latitude: location.latitude, longitude: location.longitude, accuracy: location.accuracy },
         faceVerified: true,
         faceMatchScore: faceResult.score,
+        matchedEmployeeId: faceResult.employeeId,
         snapshotBase64: snapshot,
         outsideReason: outsideReason || undefined,
       });

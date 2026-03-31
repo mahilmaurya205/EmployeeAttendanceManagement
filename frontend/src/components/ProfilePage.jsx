@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 
 export default function ProfilePage() {
   const { user, logout } = useAuthStore();
+  const employeeCode = typeof user?.employee === 'object' ? user?.employee?.employeeCode : user?.employeeCode;
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -48,7 +49,7 @@ export default function ProfilePage() {
           <div><span className="text-slate-400">Name:</span> <span className="text-white">{user?.name}</span></div>
           <div><span className="text-slate-400">Email:</span> <span className="text-white">{user?.email}</span></div>
           <div><span className="text-slate-400">Role:</span> <span className="text-white capitalize">{user?.role}</span></div>
-          <div><span className="text-slate-400">Employee Code:</span> <span className="text-white">{user?.employeeCode || 'N/A'}</span></div>
+          <div><span className="text-slate-400">Employee Code:</span> <span className="text-white">{employeeCode || 'N/A'}</span></div>
         </div>
       </div>
 

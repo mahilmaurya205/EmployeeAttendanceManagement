@@ -1,7 +1,7 @@
 // Geolocation service
-const OFFICE_LAT = parseFloat(import.meta.env.VITE_OFFICE_LAT || '23.0225');
-const OFFICE_LNG = parseFloat(import.meta.env.VITE_OFFICE_LNG || '72.5714');
-const OFFICE_RADIUS = parseFloat(import.meta.env.VITE_OFFICE_RADIUS || '200');
+const OFFICE_LAT = parseFloat(import.meta.env.VITE_OFFICE_LAT || '23.063596');
+const OFFICE_LNG = parseFloat(import.meta.env.VITE_OFFICE_LNG || '72.651390');
+const OFFICE_RADIUS = parseFloat(import.meta.env.VITE_OFFICE_RADIUS || '100');
 
 export const getDistanceMeters = (lat1, lon1, lat2, lon2) => {
   const R = 6371000;
