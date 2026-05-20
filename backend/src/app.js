@@ -44,18 +44,24 @@ const empRoutes = require('./routes/employee.routes');
 const attRoutes = require('./routes/attendance.routes');
 const repRoutes = require('./routes/report.routes');
 const adminRoutes = require('./routes/admin.routes');
+const leaveRoutes = require('./routes/leave.routes');
+const payrollRoutes = require('./routes/payroll.routes');
 
 console.log("auth:", typeof authRoutes);
 console.log("employee:", typeof empRoutes);
 console.log("attendance:", typeof attRoutes);
 console.log("report:", typeof repRoutes);
 console.log("admin:", typeof adminRoutes);
+console.log("leave:", typeof leaveRoutes);
+console.log("payroll:", typeof payrollRoutes);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/employees', empRoutes);
 app.use('/api/attendance', attRoutes);
 app.use('/api/reports', repRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/leaves', leaveRoutes);
+app.use('/api/payroll', payrollRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

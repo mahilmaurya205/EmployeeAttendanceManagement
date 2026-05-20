@@ -12,6 +12,8 @@ const storage = multer.diskStorage({
     let uploadPath;
     if (file.fieldname === 'photo' || file.fieldname === 'faceImage') {
       uploadPath = path.join(__dirname, '../../uploads/employees');
+    } else if (file.fieldname === 'logo') {
+      uploadPath = path.join(__dirname, '../../uploads/companies');
     } else if (file.fieldname === 'snapshot') {
       uploadPath = path.join(__dirname, '../../uploads/snapshots');
     } else {

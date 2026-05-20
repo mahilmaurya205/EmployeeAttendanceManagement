@@ -1,0 +1,43 @@
+export const INDIA_LOCATION_DATA = [
+  { state: 'Andhra Pradesh', districts: ['Anantapur', 'Chittoor', 'East Godavari', 'Guntur', 'Kadapa', 'Krishna', 'Kurnool', 'Nellore', 'Prakasam', 'Srikakulam', 'Visakhapatnam', 'Vizianagaram', 'West Godavari', 'Other'] },
+  { state: 'Arunachal Pradesh', districts: ['Anjaw', 'Changlang', 'East Kameng', 'East Siang', 'Itanagar Capital Complex', 'Lohit', 'Namsai', 'Papum Pare', 'Tawang', 'West Kameng', 'Other'] },
+  { state: 'Assam', districts: ['Barpeta', 'Cachar', 'Dibrugarh', 'Goalpara', 'Golaghat', 'Guwahati Metro', 'Jorhat', 'Kamrup', 'Kamrup Metro', 'Nagaon', 'Sivasagar', 'Sonitpur', 'Tinsukia', 'Other'] },
+  { state: 'Bihar', districts: ['Araria', 'Aurangabad', 'Begusarai', 'Bhagalpur', 'Bhojpur', 'Darbhanga', 'Gaya', 'Katihar', 'Muzaffarpur', 'Nalanda', 'Patna', 'Purnia', 'Samastipur', 'Other'] },
+  { state: 'Chhattisgarh', districts: ['Balod', 'Bilaspur', 'Dhamtari', 'Durg', 'Janjgir-Champa', 'Korba', 'Mahasamund', 'Raigarh', 'Raipur', 'Rajnandgaon', 'Other'] },
+  { state: 'Goa', districts: ['North Goa', 'South Goa', 'Other'] },
+  { state: 'Gujarat', districts: ['Ahmedabad', 'Amreli', 'Anand', 'Banaskantha', 'Bharuch', 'Bhavnagar', 'Gandhinagar', 'Jamnagar', 'Junagadh', 'Kachchh', 'Mehsana', 'Rajkot', 'Surat', 'Vadodara', 'Other'] },
+  { state: 'Haryana', districts: ['Ambala', 'Bhiwani', 'Faridabad', 'Gurugram', 'Hisar', 'Jhajjar', 'Jind', 'Karnal', 'Kurukshetra', 'Panipat', 'Panchkula', 'Rohtak', 'Sonipat', 'Yamunanagar', 'Other'] },
+  { state: 'Himachal Pradesh', districts: ['Bilaspur', 'Chamba', 'Hamirpur', 'Kangra', 'Kullu', 'Mandi', 'Shimla', 'Sirmaur', 'Solan', 'Una', 'Other'] },
+  { state: 'Jharkhand', districts: ['Bokaro', 'Deoghar', 'Dhanbad', 'East Singhbhum', 'Giridih', 'Hazaribagh', 'Palamu', 'Ramgarh', 'Ranchi', 'Saraikela Kharsawan', 'West Singhbhum', 'Other'] },
+  { state: 'Karnataka', districts: ['Bagalkot', 'Ballari', 'Belagavi', 'Bengaluru Rural', 'Bengaluru Urban', 'Bidar', 'Davanagere', 'Dharwad', 'Kalaburagi', 'Mangaluru', 'Mysuru', 'Shivamogga', 'Tumakuru', 'Udupi', 'Vijayapura', 'Other'] },
+  { state: 'Kerala', districts: ['Alappuzha', 'Ernakulam', 'Idukki', 'Kannur', 'Kasaragod', 'Kollam', 'Kottayam', 'Kozhikode', 'Malappuram', 'Palakkad', 'Pathanamthitta', 'Thiruvananthapuram', 'Thrissur', 'Wayanad', 'Other'] },
+  { state: 'Madhya Pradesh', districts: ['Bhopal', 'Chhindwara', 'Dewas', 'Gwalior', 'Indore', 'Jabalpur', 'Khandwa', 'Mandsaur', 'Rewa', 'Sagar', 'Satna', 'Ujjain', 'Other'] },
+  { state: 'Maharashtra', districts: ['Ahmednagar', 'Akola', 'Amravati', 'Aurangabad', 'Chandrapur', 'Kolhapur', 'Latur', 'Mumbai City', 'Mumbai Suburban', 'Nagpur', 'Nanded', 'Nashik', 'Pune', 'Raigad', 'Sangli', 'Satara', 'Solapur', 'Thane', 'Other'] },
+  { state: 'Manipur', districts: ['Bishnupur', 'Chandel', 'Churachandpur', 'Imphal East', 'Imphal West', 'Senapati', 'Tamenglong', 'Thoubal', 'Ukhrul', 'Other'] },
+  { state: 'Meghalaya', districts: ['East Garo Hills', 'East Khasi Hills', 'Jaintia Hills', 'Ri-Bhoi', 'South Garo Hills', 'West Garo Hills', 'West Khasi Hills', 'Other'] },
+  { state: 'Mizoram', districts: ['Aizawl', 'Champhai', 'Kolasib', 'Lawngtlai', 'Lunglei', 'Mamit', 'Saiha', 'Serchhip', 'Other'] },
+  { state: 'Nagaland', districts: ['Dimapur', 'Kiphire', 'Kohima', 'Mokokchung', 'Mon', 'Peren', 'Tuensang', 'Wokha', 'Zunheboto', 'Other'] },
+  { state: 'Odisha', districts: ['Angul', 'Balasore', 'Bargarh', 'Bhadrak', 'Cuttack', 'Dhenkanal', 'Ganjam', 'Jagatsinghpur', 'Jajpur', 'Jharsuguda', 'Kalahandi', 'Khordha', 'Koraput', 'Mayurbhanj', 'Puri', 'Sambalpur', 'Sundargarh', 'Other'] },
+  { state: 'Punjab', districts: ['Amritsar', 'Bathinda', 'Faridkot', 'Fatehgarh Sahib', 'Firozpur', 'Gurdaspur', 'Hoshiarpur', 'Jalandhar', 'Ludhiana', 'Mansa', 'Mohali', 'Patiala', 'Sangrur', 'Other'] },
+  { state: 'Rajasthan', districts: ['Ajmer', 'Alwar', 'Banswara', 'Barmer', 'Bharatpur', 'Bhilwara', 'Bikaner', 'Chittorgarh', 'Hanumangarh', 'Jaipur', 'Jaisalmer', 'Jhalawar', 'Jodhpur', 'Kota', 'Pali', 'Sikar', 'Sri Ganganagar', 'Udaipur', 'Other'] },
+  { state: 'Sikkim', districts: ['East Sikkim', 'North Sikkim', 'South Sikkim', 'West Sikkim', 'Other'] },
+  { state: 'Tamil Nadu', districts: ['Chengalpattu', 'Chennai', 'Coimbatore', 'Cuddalore', 'Dindigul', 'Erode', 'Kancheepuram', 'Madurai', 'Namakkal', 'Salem', 'Thanjavur', 'Tirunelveli', 'Tiruppur', 'Trichy', 'Vellore', 'Other'] },
+  { state: 'Telangana', districts: ['Adilabad', 'Hyderabad', 'Jagtial', 'Karimnagar', 'Khammam', 'Mahabubnagar', 'Medak', 'Nalgonda', 'Nizamabad', 'Rangareddy', 'Sangareddy', 'Warangal', 'Other'] },
+  { state: 'Tripura', districts: ['Dhalai', 'Gomati', 'Khowai', 'North Tripura', 'Sepahijala', 'South Tripura', 'Unakoti', 'West Tripura', 'Other'] },
+  { state: 'Uttar Pradesh', districts: ['Agra', 'Aligarh', 'Ayodhya', 'Bareilly', 'Ghaziabad', 'Gorakhpur', 'Jhansi', 'Kanpur Nagar', 'Lucknow', 'Mathura', 'Meerut', 'Moradabad', 'Noida', 'Prayagraj', 'Saharanpur', 'Varanasi', 'Other'] },
+  { state: 'Uttarakhand', districts: ['Almora', 'Dehradun', 'Haridwar', 'Nainital', 'Pauri Garhwal', 'Pithoragarh', 'Rudraprayag', 'Tehri Garhwal', 'Udham Singh Nagar', 'Uttarkashi', 'Other'] },
+  { state: 'West Bengal', districts: ['Alipurduar', 'Bankura', 'Birbhum', 'Cooch Behar', 'Darjeeling', 'Hooghly', 'Howrah', 'Jalpaiguri', 'Kolkata', 'Malda', 'Murshidabad', 'Nadia', 'North 24 Parganas', 'Paschim Medinipur', 'Purba Medinipur', 'South 24 Parganas', 'Other'] },
+  { state: 'Andaman and Nicobar Islands', districts: ['Nicobar', 'North and Middle Andaman', 'South Andaman', 'Other'] },
+  { state: 'Chandigarh', districts: ['Chandigarh', 'Other'] },
+  { state: 'Dadra and Nagar Haveli and Daman and Diu', districts: ['Dadra and Nagar Haveli', 'Daman', 'Diu', 'Other'] },
+  { state: 'Delhi', districts: ['Central Delhi', 'East Delhi', 'New Delhi', 'North Delhi', 'North East Delhi', 'North West Delhi', 'Shahdara', 'South Delhi', 'South East Delhi', 'South West Delhi', 'West Delhi', 'Other'] },
+  { state: 'Jammu and Kashmir', districts: ['Anantnag', 'Baramulla', 'Budgam', 'Doda', 'Jammu', 'Kathua', 'Kupwara', 'Pulwama', 'Srinagar', 'Udhampur', 'Other'] },
+  { state: 'Ladakh', districts: ['Kargil', 'Leh', 'Other'] },
+  { state: 'Lakshadweep', districts: ['Kavaratti', 'Other'] },
+  { state: 'Puducherry', districts: ['Karaikal', 'Mahe', 'Puducherry', 'Yanam', 'Other'] },
+];
+
+export const INDIAN_STATES = INDIA_LOCATION_DATA.map((item) => item.state);
+
+export const getDistrictsForState = (state) =>
+  INDIA_LOCATION_DATA.find((item) => item.state === state)?.districts || ['Other'];

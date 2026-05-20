@@ -1,8 +1,3 @@
-// Geolocation service
-const OFFICE_LAT = parseFloat(import.meta.env.VITE_OFFICE_LAT || '23.063596');
-const OFFICE_LNG = parseFloat(import.meta.env.VITE_OFFICE_LNG || '72.651390');
-const OFFICE_RADIUS = parseFloat(import.meta.env.VITE_OFFICE_RADIUS || '100');
-
 export const getDistanceMeters = (lat1, lon1, lat2, lon2) => {
   const R = 6371000;
   const φ1 = (lat1 * Math.PI) / 180;
@@ -22,13 +17,10 @@ export const getCurrentLocation = () => {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude, longitude, accuracy } = pos.coords;
-        const distance = getDistanceMeters(latitude, longitude, OFFICE_LAT, OFFICE_LNG);
         resolve({
           latitude,
           longitude,
           accuracy,
-          distanceFromOffice: Math.round(distance),
-          isOfficeLocation: distance <= OFFICE_RADIUS,
         });
       },
       (err) => {
@@ -43,5 +35,3 @@ export const getCurrentLocation = () => {
     );
   });
 };
-
-export const OFFICE = { lat: OFFICE_LAT, lng: OFFICE_LNG, radius: OFFICE_RADIUS };

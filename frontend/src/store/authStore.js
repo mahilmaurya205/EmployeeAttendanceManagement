@@ -39,11 +39,19 @@ const useAuthStore = create((set, get) => ({
     }
   },
 
+  updateStoredUser: (user) => {
+    localStorage.setItem('att_user', JSON.stringify(user));
+    set({ user });
+  },
+
   // Role helpers
+  isSuperAdmin: () => get().user?.role === 'SuperAdmin',
+  isDistributor: () => get().user?.role === 'Distributor',
   isAdmin:      () => ['Admin'].includes(get().user?.role),
   isManager:    () => ['Admin', 'Manager'].includes(get().user?.role),
   canModify:    () => ['Admin', 'Manager'].includes(get().user?.role),
-  canViewAll:   () => ['Admin', 'Manager', 'HR', 'Supervisor'].includes(get().user?.role),
+  canViewAll:   () => ['SuperAdmin', 'Distributor', 'Admin', 'Manager', 'HR', 'Supervisor'].includes(get().user?.role),
+  canManageUsers: () => ['SuperAdmin', 'Distributor', 'Admin'].includes(get().user?.role),
   isEmployee:   () => get().user?.role === 'Employee',
 }));
 

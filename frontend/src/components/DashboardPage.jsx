@@ -20,11 +20,7 @@ const StatCard = ({ title, value, sub, color, icon, to }) => {
     </div>
   );
 
-  if (to) {
-    return <Link to={to}>{content}</Link>;
-  }
-
-  return content;
+  return to ? <Link to={to}>{content}</Link> : content;
 };
 
 const CustomTooltip = ({ active, payload, label }) => {
@@ -38,29 +34,25 @@ const CustomTooltip = ({ active, payload, label }) => {
 };
 
 export default function DashboardPage() {
-  const { user, canViewAll } = useAuthStore();
+  const { user, canViewAll, canManageUsers, isSuperAdmin, isDistributor } = useAuthStore();
   const [stats, setStats] = useState(null);
   const [todayStatus, setTodayStatus] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const isTopRole = isSuperAdmin() || isDistributor();
+
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Try to load dashboard data
         try {
           const dashRes = await reportAPI.dashboard();
           setStats(dashRes.data?.data);
-        } catch (e) {
-          console.log('Dashboard data not available');
-        }
+        } catch (_) {}
 
-        // Try to load today's attendance
         try {
           const todayRes = await attendanceAPI.today();
           setTodayStatus(todayRes.data?.data);
-        } catch (e) {
-          console.log('Today attendance not available');
-        }
+        } catch (_) {}
       } catch (err) {
         toast.error('Failed to load dashboard');
       } finally {
@@ -80,24 +72,21 @@ export default function DashboardPage() {
 
   const today = format(new Date(), 'EEEE, MMMM d yyyy');
   const currentAction = todayStatus?.currentStatus;
-
   const statusConfig = {
     NOT_STARTED: { label: 'Not Started', color: 'text-slate-400', bg: 'bg-slate-800' },
-    PUNCH_IN:    { label: 'Checked In',  color: 'text-emerald-400', bg: 'bg-emerald-900/30 border border-emerald-800/50' },
-    BREAK_START: { label: 'On Break',    color: 'text-amber-400', bg: 'bg-amber-900/30 border border-amber-800/50' },
-    BREAK_END:   { label: 'Checked In',  color: 'text-emerald-400', bg: 'bg-emerald-900/30 border border-emerald-800/50' },
-    PUNCH_OUT:   { label: 'Checked Out', color: 'text-slate-400', bg: 'bg-slate-800' },
+    PUNCH_IN: { label: 'Checked In', color: 'text-emerald-400', bg: 'bg-emerald-900/30 border border-emerald-800/50' },
+    BREAK_START: { label: 'On Break', color: 'text-amber-400', bg: 'bg-amber-900/30 border border-amber-800/50' },
+    BREAK_END: { label: 'Checked In', color: 'text-emerald-400', bg: 'bg-emerald-900/30 border border-emerald-800/50' },
+    PUNCH_OUT: { label: 'Checked Out', color: 'text-slate-400', bg: 'bg-slate-800' },
   };
-
   const sc = statusConfig[currentAction] || statusConfig.NOT_STARTED;
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white">
-            Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 17 ? 'Afternoon' : 'Evening'}, {user?.name?.split(' ')[0]} 👋
+            Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 17 ? 'Afternoon' : 'Evening'}, {user?.name?.split(' ')[0]}
           </h1>
           <p className="text-slate-400 text-sm mt-1">{today}</p>
         </div>
@@ -111,7 +100,6 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* My Status Card */}
       {user?.employee && todayStatus && (
         <div className={`rounded-xl p-5 flex items-center justify-between ${sc.bg}`}>
           <div>
@@ -132,37 +120,43 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Stats Grid (Admin/Manager/HR/Supervisor) */}
       {stats && (
         <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard
-              title="Total Employees" value={stats.employees.total} sub="Active"
-              to="/employees"
+              title="Total Employees"
+              value={stats.employees.total}
+              sub="Active"
+              to={canViewAll() && !isTopRole ? '/employees' : undefined}
               color="text-blue-400"
               icon={<svg className="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>}
             />
             <StatCard
-              title="Present Today" value={stats.today.present} sub="Marked attendance"
-              to="/employees?attendanceStatus=present"
+              title="Present Today"
+              value={stats.today.present}
+              sub="Marked attendance"
+              to={canViewAll() && !isTopRole ? '/employees?attendanceStatus=present' : undefined}
               color="text-emerald-400"
               icon={<svg className="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
             />
             <StatCard
-              title="Absent Today" value={stats.today.absent} sub="Not marked"
-              to="/employees?attendanceStatus=absent"
+              title="Absent Today"
+              value={stats.today.absent}
+              sub="Not marked"
+              to={canViewAll() && !isTopRole ? '/employees?attendanceStatus=absent' : undefined}
               color="text-red-400"
               icon={<svg className="w-5 h-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
             />
             <StatCard
-              title="Late Today" value={stats.today.late} sub="Arrived late"
-              to="/employees?attendanceStatus=late"
+              title="Late Today"
+              value={stats.today.late}
+              sub="Arrived late"
+              to={canViewAll() && !isTopRole ? '/employees?attendanceStatus=late' : undefined}
               color="text-amber-400"
               icon={<svg className="w-5 h-5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>}
             />
           </div>
 
-          {/* Department split */}
           <div className="grid grid-cols-2 gap-4">
             <div className="card">
               <p className="text-sm text-slate-400 mb-3">IT Software</p>
@@ -176,20 +170,14 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Trend Chart */}
           <div className="card">
             <div className="flex items-center justify-between mb-6">
               <h3 className="font-semibold text-white">7-Day Attendance Trend</h3>
-              <Link to="/attendance/logs" className="text-xs text-blue-400 hover:text-blue-300">View logs →</Link>
+              {canViewAll() && !isTopRole && <Link to="/attendance/logs" className="text-xs text-blue-400 hover:text-blue-300">View logs →</Link>}
             </div>
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={stats.trend} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={d => format(new Date(d), 'EEE')}
-                  tick={{ fill: '#64748b', fontSize: 12 }}
-                  axisLine={false} tickLine={false}
-                />
+                <XAxis dataKey="date" tickFormatter={(d) => format(new Date(d), 'EEE')} tick={{ fill: '#64748b', fontSize: 12 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: '#64748b', fontSize: 12 }} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomTooltip />} />
                 <Bar dataKey="present" radius={[6, 6, 0, 0]}>
@@ -203,9 +191,14 @@ export default function DashboardPage() {
         </>
       )}
 
-      {/* Quick links */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        {canViewAll() && (
+        {canManageUsers() && (
+          <Link to="/admin/users" className="card hover:border-blue-800/50 transition-colors group cursor-pointer">
+            <p className="text-slate-400 group-hover:text-blue-400 transition-colors text-sm font-medium">Manage Users</p>
+            <p className="text-xs text-slate-600 mt-1">Create distributors and admins →</p>
+          </Link>
+        )}
+        {canViewAll() && !isTopRole && (
           <>
             <Link to="/employees" className="card hover:border-blue-800/50 transition-colors group cursor-pointer">
               <p className="text-slate-400 group-hover:text-blue-400 transition-colors text-sm font-medium">Manage Employees</p>

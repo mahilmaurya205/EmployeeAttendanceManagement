@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import useAuthStore from '../store/authStore';
 import { attendanceAPI, employeeAPI } from '../utils/api/api';
-import { getCurrentLocation } from '../services/geolocation';
+import { getCurrentLocation, getDistanceMeters } from '../services/geolocation';
 import { loadModels, detectFace, matchFace, buildLabeledDescriptors, captureSnapshot } from './faceRecognition';
 import Webcam from 'react-webcam';
 
@@ -38,6 +38,7 @@ export default function AttendancePage() {
   const [labeledDescriptors, setLabeledDescriptors] = useState(null);
   const [modelsReady, setModelsReady] = useState(false);
   const scanInterval = useRef(null);
+  const officeLocation = user?.resolvedOfficeLocation || user?.officeLocation || null;
 
   const currentStatus = todayData?.currentStatus || 'NOT_STARTED';
   const allowedActions = ALLOWED_ACTIONS[currentStatus] || [];
@@ -53,7 +54,15 @@ export default function AttendancePage() {
   // Load location
   const fetchLocation = async () => {
     try {
-      const loc = await getCurrentLocation();
+      const current = await getCurrentLocation();
+      const distance = officeLocation?.latitude != null && officeLocation?.longitude != null
+        ? getDistanceMeters(current.latitude, current.longitude, officeLocation.latitude, officeLocation.longitude)
+        : null;
+      const loc = {
+        ...current,
+        distanceFromOffice: distance == null ? null : Math.round(distance),
+        isOfficeLocation: distance == null ? false : distance <= Number(officeLocation?.radius || 0),
+      };
       setLocation(loc);
       setLocationError(null);
     } catch (err) {
@@ -141,10 +150,8 @@ export default function AttendancePage() {
       return;
     }
 
-    const employee = user?.employee;
-    const dept = typeof employee === 'object' ? employee?.department : null;
-    if (dept === 'IT Hardware' && !location.isOfficeLocation && !outsideReason.trim()) {
-      toast.error('Please provide a reason for being outside the office.');
+    if (!officeLocation?.latitude || !officeLocation?.longitude || !officeLocation?.radius) {
+      toast.error('Admin office location is not configured yet.');
       return;
     }
 
@@ -262,25 +269,22 @@ export default function AttendancePage() {
             </div>
             {locationError ? (
               <div className="text-red-400 text-xs bg-red-900/20 border border-red-800/30 rounded-lg p-3">{locationError}</div>
+            ) : !officeLocation?.latitude || !officeLocation?.longitude || !officeLocation?.radius ? (
+              <div className="text-amber-400 text-xs bg-amber-900/20 border border-amber-800/30 rounded-lg p-3">
+                Your Admin has not configured office latitude, longitude, and radius yet.
+              </div>
             ) : location ? (
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <span className={`w-2 h-2 rounded-full ${location.isOfficeLocation ? 'bg-emerald-400' : 'bg-amber-400'}`} />
                   <span className={`text-sm font-medium ${location.isOfficeLocation ? 'text-emerald-400' : 'text-amber-400'}`}>
-                    {location.isOfficeLocation ? 'At Office' : `${location.distanceFromOffice}m from office`}
+                    {location.isOfficeLocation ? 'Within Allowed Radius' : `${location.distanceFromOffice}m from office`}
                   </span>
                 </div>
+                <p className="text-xs text-slate-500">Allowed radius: {officeLocation.radius}m</p>
                 <p className="text-xs text-slate-500 font-mono">
                   {location.latitude.toFixed(5)}, {location.longitude.toFixed(5)}
                 </p>
-                {!location.isOfficeLocation && (
-                  <input
-                    className="input text-sm mt-2"
-                    placeholder="Reason for being outside office..."
-                    value={outsideReason}
-                    onChange={e => setOutsideReason(e.target.value)}
-                  />
-                )}
               </div>
             ) : (
               <div className="flex items-center gap-2 text-slate-400 text-sm">

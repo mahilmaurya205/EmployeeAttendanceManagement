@@ -36,6 +36,7 @@ export const authAPI = {
   login: (data) => api.post('/auth/login', data),
   me: () => api.get('/auth/me'),
   changePassword: (data) => api.post('/auth/change-password', data),
+  updateProfile: (data) => api.put('/auth/profile', data),
   logout: () => api.post('/auth/logout'),
 };
 
@@ -74,9 +75,24 @@ export const adminAPI = {
   users: () => api.get('/admin/users'),
   updateRole: (id, role) => api.put(`/admin/users/${id}/role`, { role }),
   toggleActive: (id) => api.put(`/admin/users/${id}/toggle-active`),
-  createUser: (data) => api.post('/admin/users', data),
+  createUser: (data) => api.post('/admin/users', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
   deleteUser: (id) => api.delete(`/admin/users/${id}`),
   resetPassword: (id, newPassword) => api.put(`/admin/users/${id}/password`, { newPassword }),
+};
+
+export const leaveAPI = {
+  getPolicy: () => api.get('/leaves/policy'),
+  updatePolicy: (leaveTypes) => api.put('/leaves/policy', { leaveTypes }),
+  listRequests: (params) => api.get('/leaves/requests', { params }),
+  createRequest: (data) => api.post('/leaves/requests', data),
+  updateStatus: (id, data) => api.put(`/leaves/requests/${id}/status`, data),
+};
+
+export const payrollAPI = {
+  getPolicy: () => api.get('/payroll/policy'),
+  updatePolicy: (data) => api.put('/payroll/policy', data),
+  listRuns: (params) => api.get('/payroll/runs', { params }),
+  generate: (month) => api.post('/payroll/generate', { month }),
 };
 
 export const resolveUploadUrl = (assetPath) => {

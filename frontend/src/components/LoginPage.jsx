@@ -4,8 +4,8 @@ import toast from 'react-hot-toast';
 import useAuthStore from '../store/authStore';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('admin@company.com');
-  const [password, setPassword] = useState('Admin@123');
+  const [email, setEmail] = useState('superadmin@attendanceiq.com');
+  const [password, setPassword] = useState('Super@123');
   const [showPw, setShowPw] = useState(false);
   const { login, loading } = useAuthStore();
   const navigate = useNavigate();
@@ -85,7 +85,7 @@ export default function LoginPage() {
                   boxSizing: 'border-box',
                   fontFamily: 'inherit'
                 }}
-                placeholder="admin@company.com"
+                placeholder="superadmin@attendanceiq.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -176,7 +176,7 @@ export default function LoginPage() {
             textAlign: 'center'
           }}>
             <p style={{ fontSize: '12px', color: '#64748b', margin: '0' }}>
-              Demo: admin@company.com / Admin@123
+              Demo: superadmin@attendanceiq.com / Super@123
             </p>
           </div>
         </div>

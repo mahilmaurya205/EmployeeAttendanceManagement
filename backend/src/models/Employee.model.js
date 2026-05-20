@@ -41,12 +41,18 @@ const employeeSchema = new mongoose.Schema({
   },
   department: {
     type: String,
-    enum: ['IT Hardware', 'IT Software'],
     required: [true, 'Department is required'],
+    trim: true,
   },
   designation: {
     type: String,
     trim: true,
+  },
+  basicSalary: {
+    type: Number,
+    required: [true, 'Basic salary is required'],
+    min: [0, 'Basic salary cannot be negative'],
+    default: 0,
   },
   address: {
     street: String,
@@ -91,6 +97,15 @@ const employeeSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
   },
+  adminOwner: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+  },
+  distributorOwner: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  },
   isActive: {
     type: Boolean,
     default: true,
@@ -105,5 +120,8 @@ const employeeSchema = new mongoose.Schema({
 employeeSchema.index({ employeeCode: 1 });
 employeeSchema.index({ department: 1 });
 employeeSchema.index({ email: 1 });
+employeeSchema.index({ adminOwner: 1, isActive: 1 });
+employeeSchema.index({ distributorOwner: 1, isActive: 1 });
+employeeSchema.index({ adminOwner: 1, basicSalary: 1 });
 
 module.exports = mongoose.model('Employee', employeeSchema);

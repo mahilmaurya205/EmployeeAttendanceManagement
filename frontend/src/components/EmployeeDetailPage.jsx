@@ -59,6 +59,7 @@ export default function EmployeeDetailPage() {
             <div><span className="text-slate-400">Phone:</span> <span className="text-white">{employee.mobile || 'N/A'}</span></div>
             <div><span className="text-slate-400">Department:</span> <span className="text-white">{employee.department}</span></div>
             <div><span className="text-slate-400">Position:</span> <span className="text-white">{employee.designation || 'N/A'}</span></div>
+            <div><span className="text-slate-400">Basic Salary:</span> <span className="text-white">₹{Number(employee.basicSalary || 0).toLocaleString('en-IN')}</span></div>
             <div><span className="text-slate-400">Joined:</span> <span className="text-white">{format(new Date(employee.joiningDate || employee.createdAt), 'MMMM dd, yyyy')}</span></div>
             <div><span className="text-slate-400">Status:</span> <span className={`font-semibold ${employee.isActive ? 'text-green-400' : 'text-red-400'}`}>{employee.isActive ? 'Active' : 'Inactive'}</span></div>
           </div>

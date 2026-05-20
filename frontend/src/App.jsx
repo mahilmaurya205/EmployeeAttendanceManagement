@@ -20,6 +20,8 @@ import AttendanceLogPage from './components/AttendanceLogPage';
 import MonthlyReportPage from './components/MonthlyReportPage';
 import AdminUsersPage from './components/AdminUsersPage';
 import ProfilePage from './components/ProfilePage';
+import PayrollPage from './components/PayrollPage';
+import LeaveManagementPage from './components/LeaveManagementPage';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -109,11 +111,15 @@ function AppRoutes() {
             <Route path="attendance/logs" element={<AttendanceLogPage />} />
             <Route path="reports/monthly" element={<MonthlyReportPage />} />
           </Route>
-          <Route element={<ProtectedRoute roles={['Admin']} />}>
+          <Route element={<ProtectedRoute roles={['SuperAdmin', 'Distributor', 'Admin']} />}>
             <Route path="admin/users" element={<AdminUsersPage />} />
+            <Route path="admin/distributors" element={<AdminUsersPage />} />
+            <Route path="admin/companies" element={<AdminUsersPage />} />
           </Route>
           <Route element={<ProtectedRoute roles={['Employee', 'Admin', 'Manager', 'HR', 'Supervisor']} />}>
             <Route path="attendance" element={<AttendancePage />} />
+            <Route path="leaves" element={<LeaveManagementPage />} />
+            <Route path="payroll" element={<PayrollPage />} />
           </Route>
           <Route path="profile" element={<ProfilePage />} />
         </Route>

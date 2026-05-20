@@ -19,8 +19,8 @@ export default function EmployeeFormPage() {
   const isEdit = !!id;
 
   const [form, setForm] = useState({
-    name: '', employeeCode: '', email: '', mobile: '', department: 'IT Software',
-    designation: '', aadharNo: '', panNo: '', password: '',
+    name: '', employeeCode: '', email: '', mobile: '', department: '',
+    designation: '', basicSalary: '', aadharNo: '', panNo: '', password: '',
     address: { street: '', city: '', state: '', pincode: '' },
     workSchedule: { shiftStart: '09:00', shiftEnd: '18:00' },
   });
@@ -37,7 +37,8 @@ export default function EmployeeFormPage() {
         setForm({
           name: emp.name || '', employeeCode: emp.employeeCode || '',
           email: emp.email || '', mobile: emp.mobile || '',
-          department: emp.department || 'IT Software', designation: emp.designation || '',
+          department: emp.department || '', designation: emp.designation || '',
+          basicSalary: emp.basicSalary ?? '',
           aadharNo: '', panNo: '', password: '',
           address: emp.address || { street: '', city: '', state: '', pincode: '' },
           workSchedule: {
@@ -60,6 +61,8 @@ export default function EmployeeFormPage() {
     if (!form.employeeCode.trim()) e.employeeCode = 'Employee code required';
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Valid email required';
     if (!/^[6-9]\d{9}$/.test(form.mobile)) e.mobile = 'Valid 10-digit Indian mobile required';
+    if (!form.department.trim()) e.department = 'Department is required';
+    if (form.basicSalary === '' || Number(form.basicSalary) < 0) e.basicSalary = 'Basic salary is required';
     if (!form.workSchedule.shiftStart) e.shiftStart = 'Start time is required';
     if (!form.workSchedule.shiftEnd) e.shiftEnd = 'End time is required';
     if (!isEdit) {
@@ -172,14 +175,26 @@ export default function EmployeeFormPage() {
             <FormField label="Mobile *" error={errors.mobile}>
               <input className="input" value={form.mobile} onChange={e => set('mobile', e.target.value)} placeholder="9876543210" maxLength={10} />
             </FormField>
-            <FormField label="Department *">
-              <select className="input" value={form.department} onChange={e => set('department', e.target.value)}>
-                <option value="IT Software">IT Software</option>
-                <option value="IT Hardware">IT Hardware</option>
-              </select>
+            <FormField label="Department *" error={errors.department}>
+              <input
+                className="input"
+                value={form.department}
+                onChange={e => set('department', e.target.value)}
+                placeholder="IT Software"
+              />
             </FormField>
             <FormField label="Designation">
               <input className="input" value={form.designation} onChange={e => set('designation', e.target.value)} placeholder="Software Engineer" />
+            </FormField>
+            <FormField label="Basic Salary *" error={errors.basicSalary}>
+              <input
+                className="input"
+                type="number"
+                min="0"
+                value={form.basicSalary}
+                onChange={e => set('basicSalary', e.target.value)}
+                placeholder="25000"
+              />
             </FormField>
             {!isEdit && (
               <FormField label="Initial Password">

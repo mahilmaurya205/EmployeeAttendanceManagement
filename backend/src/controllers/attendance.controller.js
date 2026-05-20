@@ -1,12 +1,28 @@
 const Employee = require('../models/Employee.model');
 const AttendanceLog = require('../models/AttendanceLog.model');
 const AttendanceSummary = require('../models/AttendanceSummary.model');
-const { getDistanceMeters, OFFICE_LAT, OFFICE_LNG, OFFICE_RADIUS } = require('../middleware/location.middleware');
+const { getDistanceMeters } = require('../middleware/location.middleware');
 const { saveBase64Image } = require('../middleware/upload.middleware');
+const {
+  ROLES,
+  buildEmployeeScopeFilter,
+} = require('../utils/access');
+const User = require('../models/User.model');
 
 const VALID_ACTIONS = ['PUNCH_IN', 'PUNCH_OUT', 'BREAK_START', 'BREAK_END'];
 
 const getTodayStr = () => new Date().toISOString().split('T')[0];
+
+const findScopedEmployee = (user, employeeId) => Employee.findOne({
+  _id: employeeId,
+  ...buildEmployeeScopeFilter(user),
+});
+
+const getAdminSettings = async (employee, user) => {
+  const adminOwnerId = employee?.adminOwner || user?.adminOwner || (user?.role === ROLES.ADMIN ? user._id : null);
+  if (!adminOwnerId) return null;
+  return User.findById(adminOwnerId).select('officeLocation attendancePolicy');
+};
 
 const getOrCreateSummary = async (employeeId, date) => {
   let summary = await AttendanceSummary.findOne({ employee: employeeId, date });
@@ -25,6 +41,8 @@ const updateSummary = async (employeeId, date) => {
 
   const summary = await getOrCreateSummary(employeeId, date);
   const employee = await Employee.findById(employeeId).select('workSchedule');
+  const adminSettings = await getAdminSettings(employee, { adminOwner: employee?.adminOwner });
+  const halfDayLateAfterMinutes = Number(adminSettings?.attendancePolicy?.halfDayLateAfterMinutes ?? 30);
 
   let punchIn = null;
   let punchOut = null;
@@ -78,7 +96,10 @@ const updateSummary = async (employeeId, date) => {
   }
 
   const overtimeMinutes = Math.max(0, totalWorkMinutes - 480);
-  const status = punchIn ? (totalWorkMinutes >= 240 ? 'Present' : 'Half Day') : 'Absent';
+  const isHalfDayByLate = isLate && lateByMinutes >= halfDayLateAfterMinutes;
+  const status = !punchIn
+    ? 'Absent'
+    : (isHalfDayByLate || totalWorkMinutes < 240 ? 'Half Day' : 'Present');
 
   await AttendanceSummary.findOneAndUpdate(
     { employee: employeeId, date: summary.date },
@@ -133,7 +154,7 @@ exports.recordAttendanceAction = async (req, res, next) => {
     }
 
     let employeeId;
-    if (req.user.role === 'Employee') {
+    if (req.user.role === ROLES.EMPLOYEE) {
       if (!req.user.employee) {
         return res.status(400).json({ success: false, message: 'No employee profile linked to this account.' });
       }
@@ -145,7 +166,7 @@ exports.recordAttendanceAction = async (req, res, next) => {
       }
     }
 
-    const employee = await Employee.findById(employeeId);
+    const employee = await findScopedEmployee(req.user, employeeId);
     if (!employee || !employee.isActive) {
       return res.status(404).json({ success: false, message: 'Employee not found or inactive.' });
     }
@@ -158,23 +179,24 @@ exports.recordAttendanceAction = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Location is required.' });
     }
 
-    const distance = getDistanceMeters(location.latitude, location.longitude, OFFICE_LAT, OFFICE_LNG);
-    const isOfficeLocation = distance <= OFFICE_RADIUS;
-
-    if (employee.department === 'IT Software' && !isOfficeLocation) {
-      return res.status(403).json({
+    const adminSettings = await getAdminSettings(employee, req.user);
+    const officeLocation = adminSettings?.officeLocation;
+    if (!officeLocation?.latitude || !officeLocation?.longitude || !officeLocation?.radius) {
+      return res.status(400).json({
         success: false,
-        message: `IT Software employees must be within ${OFFICE_RADIUS}m of the office. You are ${Math.round(distance)}m away.`,
-        distanceFromOffice: Math.round(distance),
+        message: 'Admin office location is not configured yet. Please contact your Admin.',
       });
     }
 
-    if (employee.department === 'IT Hardware' && !isOfficeLocation && !outsideReason?.trim()) {
-      return res.status(400).json({
+    const distance = getDistanceMeters(location.latitude, location.longitude, officeLocation.latitude, officeLocation.longitude);
+    const isOfficeLocation = distance <= officeLocation.radius;
+
+    if (!isOfficeLocation) {
+      return res.status(403).json({
         success: false,
-        message: 'You are outside the office. Please provide a reason.',
-        requiresReason: true,
+        message: `Attendance is allowed only within ${officeLocation.radius}m of your Admin office location. You are ${Math.round(distance)}m away.`,
         distanceFromOffice: Math.round(distance),
+        requiredRadius: officeLocation.radius,
       });
     }
 
@@ -266,7 +288,7 @@ exports.getTodayAttendance = async (req, res, next) => {
   try {
     let employeeId = req.user.employee?._id || req.user.employee;
 
-    if (['Admin', 'Manager', 'HR', 'Supervisor'].includes(req.user.role) && req.query.employeeId) {
+    if ([ROLES.SUPER_ADMIN, ROLES.DISTRIBUTOR, ROLES.ADMIN, ROLES.MANAGER, ROLES.HR, ROLES.SUPERVISOR].includes(req.user.role) && req.query.employeeId) {
       employeeId = req.query.employeeId;
     }
 
@@ -275,6 +297,11 @@ exports.getTodayAttendance = async (req, res, next) => {
     }
 
     const today = getTodayStr();
+    const employee = await findScopedEmployee(req.user, employeeId);
+    if (!employee) {
+      return res.status(404).json({ success: false, message: 'Employee not found.' });
+    }
+
     const [logs, summary] = await Promise.all([
       AttendanceLog.find({ employee: employeeId, date: today }).sort({ timestamp: 1 }),
       AttendanceSummary.findOne({ employee: employeeId, date: today }),
@@ -302,8 +329,13 @@ exports.getAttendanceHistory = async (req, res, next) => {
     let employeeId = req.user.employee?._id || req.user.employee;
     const { startDate, endDate, page = 1, limit = 30 } = req.query;
 
-    if (['Admin', 'Manager', 'HR', 'Supervisor'].includes(req.user.role) && req.query.employeeId) {
+    if ([ROLES.SUPER_ADMIN, ROLES.DISTRIBUTOR, ROLES.ADMIN, ROLES.MANAGER, ROLES.HR, ROLES.SUPERVISOR].includes(req.user.role) && req.query.employeeId) {
       employeeId = req.query.employeeId;
+    }
+
+    const employee = await findScopedEmployee(req.user, employeeId);
+    if (!employee) {
+      return res.status(404).json({ success: false, message: 'Employee not found.' });
     }
 
     const filter = { employee: employeeId };
@@ -337,7 +369,7 @@ exports.getLogsForDate = async (req, res, next) => {
     const { date } = req.params;
     const { department } = req.query;
 
-    const employeeFilter = { isActive: true };
+    const employeeFilter = { ...buildEmployeeScopeFilter(req.user), isActive: true };
     if (department) employeeFilter.department = department;
 
     const employees = await Employee.find(employeeFilter).select('_id');
@@ -360,7 +392,7 @@ exports.getSummaryForDate = async (req, res, next) => {
 
     await ensureDailySummaries(date, department);
 
-    const employeeFilter = { isActive: true };
+    const employeeFilter = { ...buildEmployeeScopeFilter(req.user), isActive: true };
     if (department) employeeFilter.department = department;
 
     const summaries = await AttendanceSummary.find({ date })
@@ -393,6 +425,11 @@ exports.updateAttendanceLog = async (req, res, next) => {
 
     if (!log) {
       return res.status(404).json({ success: false, message: 'Log not found.' });
+    }
+
+    const employee = await findScopedEmployee(req.user, log.employee);
+    if (!employee) {
+      return res.status(404).json({ success: false, message: 'Employee not found.' });
     }
 
     if (timestamp) log.timestamp = new Date(timestamp);

@@ -18,7 +18,8 @@ router.post('/', authenticate, canManageEmployees, upload.single('photo'), [
   body('employeeCode').trim().notEmpty().withMessage('Employee code required'),
   body('email').isEmail().withMessage('Valid email required'),
   body('mobile').matches(/^[6-9]\d{9}$/).withMessage('Valid Indian mobile required'),
-  body('department').isIn(['IT Hardware', 'IT Software']).withMessage('Invalid department'),
+  body('department').trim().notEmpty().withMessage('Department required'),
+  body('basicSalary').isFloat({ min: 0 }).withMessage('Basic salary must be a valid non-negative amount'),
   body('aadharNo').matches(/^\d{12}$/).withMessage('Aadhar must be 12 digits'),
   body('panNo').matches(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/).withMessage('Invalid PAN format'),
 ], employeeController.createEmployee);

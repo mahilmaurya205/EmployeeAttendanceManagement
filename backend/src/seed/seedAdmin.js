@@ -9,25 +9,39 @@ const seedAdmin = async () => {
   try {
     await connectDB();
 
-    // Check if admin already exists
-    const adminExists = await User.findOne({ email: 'admin@company.com' });
-    if (adminExists) {
-      console.log('✅ Admin user already exists');
-      process.exit(0);
+    const [superAdminExists, adminExists] = await Promise.all([
+      User.findOne({ email: 'superadmin@attendanceiq.com' }),
+      User.findOne({ email: 'admin@company.com' }),
+    ]);
+
+    if (!superAdminExists) {
+      await User.create({
+        name: 'Super Admin',
+        email: 'superadmin@attendanceiq.com',
+        password: 'Super@123',
+        role: 'SuperAdmin',
+        isActive: true,
+      });
+      console.log('✅ SuperAdmin created: superadmin@attendanceiq.com / Super@123');
+    } else {
+      console.log('✅ SuperAdmin already exists');
     }
 
-    // Create admin user
-    const admin = await User.create({
-      name: 'Admin User',
-      email: 'admin@company.com',
-      password: 'Admin@123',
-      role: 'Admin',
-      isActive: true,
-    });
+    if (!adminExists) {
+      const admin = await User.create({
+        name: 'Admin User',
+        email: 'admin@company.com',
+        password: 'Admin@123',
+        role: 'Admin',
+        isActive: true,
+      });
+      admin.adminOwner = admin._id;
+      await admin.save();
+      console.log('✅ Admin created: admin@company.com / Admin@123');
+    } else {
+      console.log('✅ Admin already exists');
+    }
 
-    console.log('✅ Admin user created successfully');
-    console.log('Email: admin@company.com');
-    console.log('Password: Admin@123');
     process.exit(0);
   } catch (err) {
     console.error('Error seeding admin:', err.message);

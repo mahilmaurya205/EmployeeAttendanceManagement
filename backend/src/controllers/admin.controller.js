@@ -2,18 +2,56 @@ const User = require('../models/User.model');
 const Employee = require('../models/Employee.model');
 const AttendanceLog = require('../models/AttendanceLog.model');
 const AttendanceSummary = require('../models/AttendanceSummary.model');
+const {
+  ROLES,
+  ALL_ROLES,
+  ADMIN_STAFF_ROLES,
+  asId,
+  normalizeRole,
+  getAdminOwnerId,
+  getDistributorOwnerId,
+  buildUserScopeFilter,
+} = require('../utils/access');
 
-const VALID_ROLES = ['Admin', 'Manager', 'HR', 'Supervisor', 'Employee'];
+const normalizeString = (value) => {
+  if (value == null) return undefined;
+  const normalized = String(value).trim();
+  return normalized || undefined;
+};
 
-const normalizeRole = (role) => {
-  if (!role) return role;
-  const lowered = String(role).trim().toLowerCase();
-  return VALID_ROLES.find((item) => item.toLowerCase() === lowered) || role;
+const buildAssetPath = (file) => {
+  if (!file?.path) return undefined;
+  const normalized = file.path.replace(/\\/g, '/');
+  const uploadIndex = normalized.lastIndexOf('uploads/');
+  return uploadIndex >= 0 ? normalized.substring(uploadIndex) : normalized;
+};
+
+const findScopedUser = (requestUser, targetId) => User.findOne({
+  _id: targetId,
+  ...buildUserScopeFilter(requestUser),
+});
+
+const canManageTarget = (requestUser, targetUser) => {
+  if (!targetUser) return false;
+
+  if (requestUser.role === ROLES.SUPER_ADMIN) {
+    return targetUser.role !== ROLES.SUPER_ADMIN;
+  }
+
+  if (requestUser.role === ROLES.DISTRIBUTOR) {
+    return asId(targetUser.distributorOwner) === asId(requestUser._id) && targetUser.role !== ROLES.DISTRIBUTOR;
+  }
+
+  if (requestUser.role === ROLES.ADMIN) {
+    return asId(targetUser.adminOwner) === asId(requestUser._id) && ![ROLES.ADMIN, ROLES.DISTRIBUTOR, ROLES.SUPER_ADMIN].includes(targetUser.role);
+  }
+
+  return false;
 };
 
 exports.listUsers = async (req, res, next) => {
   try {
-    const users = await User.find()
+    const users = await User.find(buildUserScopeFilter(req.user))
       .populate('employee', 'name employeeCode department')
       .sort({ createdAt: -1 });
 
@@ -27,21 +65,29 @@ exports.updateUserRole = async (req, res, next) => {
   try {
     const role = normalizeRole(req.body.role);
 
-    if (!VALID_ROLES.includes(role)) {
+    if (!ALL_ROLES.includes(role)) {
       return res.status(400).json({ success: false, message: 'Invalid role.' });
     }
 
-    const existingUser = await User.findById(req.params.id);
+    const existingUser = await findScopedUser(req.user, req.params.id);
     if (!existingUser) {
       return res.status(404).json({ success: false, message: 'User not found.' });
     }
 
-    if (existingUser.role === 'Admin') {
-      return res.status(400).json({ success: false, message: 'Admin role cannot be changed from this page.' });
+    if (!canManageTarget(req.user, existingUser)) {
+      return res.status(403).json({ success: false, message: 'You cannot manage this user.' });
+    }
+
+    if ([ROLES.ADMIN, ROLES.DISTRIBUTOR, ROLES.SUPER_ADMIN].includes(existingUser.role)) {
+      return res.status(400).json({ success: false, message: 'Top-level roles cannot be changed from this page.' });
     }
 
     if (existingUser.employee) {
       return res.status(400).json({ success: false, message: 'Employee-linked users always keep the Employee role.' });
+    }
+
+    if (req.user.role !== ROLES.ADMIN || !ADMIN_STAFF_ROLES.includes(role)) {
+      return res.status(400).json({ success: false, message: 'Only Admin can assign Manager, HR, or Supervisor roles.' });
     }
 
     const user = await User.findByIdAndUpdate(req.params.id, { role }, { new: true })
@@ -59,10 +105,14 @@ exports.updateUserRole = async (req, res, next) => {
 
 exports.toggleUserActive = async (req, res, next) => {
   try {
-    const user = await User.findById(req.params.id);
+    const user = await findScopedUser(req.user, req.params.id);
 
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+
+    if (!canManageTarget(req.user, user)) {
+      return res.status(403).json({ success: false, message: 'You cannot manage this user.' });
     }
 
     user.isActive = !user.isActive;
@@ -84,14 +134,18 @@ exports.toggleUserActive = async (req, res, next) => {
 
 exports.deleteUser = async (req, res, next) => {
   try {
-    const user = await User.findById(req.params.id);
+    const user = await findScopedUser(req.user, req.params.id);
 
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found.' });
     }
 
-    if (user.role === 'Admin') {
-      return res.status(400).json({ success: false, message: 'Admin users cannot be deleted from this page.' });
+    if (!canManageTarget(req.user, user)) {
+      return res.status(403).json({ success: false, message: 'You cannot manage this user.' });
+    }
+
+    if ([ROLES.SUPER_ADMIN, ROLES.DISTRIBUTOR, ROLES.ADMIN].includes(user.role)) {
+      return res.status(400).json({ success: false, message: 'Top-level accounts can be deactivated, but not deleted.' });
     }
 
     if (user.employee) {
@@ -122,9 +176,13 @@ exports.resetUserPassword = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'New password must be at least 6 characters.' });
     }
 
-    const user = await User.findById(req.params.id).select('+password');
+    const user = await findScopedUser(req.user, req.params.id).select('+password');
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+
+    if (!canManageTarget(req.user, user)) {
+      return res.status(403).json({ success: false, message: 'You cannot manage this user.' });
     }
 
     user.password = String(newPassword);
@@ -144,26 +202,104 @@ exports.createUser = async (req, res, next) => {
   try {
     const { name, email, password } = req.body;
     const role = normalizeRole(req.body.role);
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+    const requesterRole = req.user.role;
+    const logoPath = buildAssetPath(req.file);
 
     if (!name || !email || !password) {
       return res.status(400).json({ success: false, message: 'Name, email, and password are required.' });
     }
 
-    if (!VALID_ROLES.includes(role)) {
+    if (!ALL_ROLES.includes(role)) {
       return res.status(400).json({ success: false, message: 'Invalid role.' });
     }
 
-    const existing = await User.findOne({ email: String(email).trim().toLowerCase() });
+    const existing = await User.findOne({ email: normalizedEmail });
     if (existing) {
       return res.status(409).json({ success: false, message: 'Email already in use.' });
     }
 
-    const user = await User.create({
-      name: String(name).trim(),
-      email: String(email).trim().toLowerCase(),
-      password,
-      role,
-    });
+    let payload;
+
+    if (requesterRole === ROLES.SUPER_ADMIN && role === ROLES.DISTRIBUTOR) {
+      const distributorCode = normalizeString(req.body.distributorCode)?.toUpperCase();
+      const address = normalizeString(req.body.address);
+      const state = normalizeString(req.body.state);
+      const district = normalizeString(req.body.district);
+      const area = normalizeString(req.body.area);
+
+      if (!distributorCode || !address || !state || !district || !area) {
+        return res.status(400).json({
+          success: false,
+          message: 'Distributor code, address, state, district, and area are required for Distributor.',
+        });
+      }
+
+      const codeExists = await User.findOne({ distributorCode });
+      if (codeExists) {
+        return res.status(409).json({ success: false, message: 'Distributor code already exists.' });
+      }
+
+      payload = {
+        name: normalizeString(name),
+        email: normalizedEmail,
+        password,
+        role,
+        creator: req.user._id,
+        address,
+        state,
+        district,
+        area,
+        distributorCode,
+        gstNo: normalizeString(req.body.gstNo),
+        panNo: normalizeString(req.body.panNo),
+        aadharNo: normalizeString(req.body.aadharNo),
+      };
+    } else if (
+      (requesterRole === ROLES.SUPER_ADMIN || requesterRole === ROLES.DISTRIBUTOR)
+      && role === ROLES.ADMIN
+    ) {
+      const companyName = normalizeString(req.body.companyName);
+      if (!companyName) {
+        return res.status(400).json({ success: false, message: 'Company Name is required for Admin.' });
+      }
+
+      payload = {
+        name: normalizeString(name),
+        email: normalizedEmail,
+        password,
+        role,
+        companyName,
+        logo: logoPath,
+        gstNo: normalizeString(req.body.gstNo),
+        panNo: normalizeString(req.body.panNo),
+        aadharNo: normalizeString(req.body.aadharNo),
+        creator: req.user._id,
+        distributorOwner: requesterRole === ROLES.DISTRIBUTOR ? req.user._id : undefined,
+      };
+    } else if (requesterRole === ROLES.ADMIN && ADMIN_STAFF_ROLES.includes(role)) {
+      payload = {
+        name: normalizeString(name),
+        email: normalizedEmail,
+        password,
+        role,
+        creator: req.user._id,
+        adminOwner: req.user._id,
+        distributorOwner: getDistributorOwnerId(req.user),
+      };
+    } else {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not allowed to create a user with that role.',
+      });
+    }
+
+    const user = await User.create(payload);
+
+    if (role === ROLES.ADMIN) {
+      user.adminOwner = user._id;
+      await user.save();
+    }
 
     res.status(201).json({ success: true, data: user });
   } catch (err) {

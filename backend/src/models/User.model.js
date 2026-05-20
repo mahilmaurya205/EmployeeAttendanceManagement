@@ -22,8 +22,94 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['Admin', 'Manager', 'HR', 'Supervisor', 'Employee'],
+    enum: ['SuperAdmin', 'Distributor', 'Admin', 'Manager', 'HR', 'Supervisor', 'Employee'],
     default: 'Employee',
+  },
+  companyName: {
+    type: String,
+    trim: true,
+  },
+  logo: {
+    type: String,
+    trim: true,
+  },
+  gstNo: {
+    type: String,
+    trim: true,
+    uppercase: true,
+  },
+  panNo: {
+    type: String,
+    trim: true,
+    uppercase: true,
+  },
+  aadharNo: {
+    type: String,
+    trim: true,
+  },
+  distributorCode: {
+    type: String,
+    trim: true,
+    uppercase: true,
+    sparse: true,
+  },
+  address: {
+    type: String,
+    trim: true,
+  },
+  state: {
+    type: String,
+    trim: true,
+  },
+  district: {
+    type: String,
+    trim: true,
+  },
+  area: {
+    type: String,
+    trim: true,
+  },
+  creator: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  },
+  adminOwner: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  },
+  distributorOwner: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  },
+  officeLocation: {
+    latitude: Number,
+    longitude: Number,
+    radius: {
+      type: Number,
+      default: 100,
+    },
+  },
+  attendancePolicy: {
+    halfDayLateAfterMinutes: {
+      type: Number,
+      default: 30,
+    },
+  },
+  payrollPolicy: {
+    salarySlipGenerationDay: {
+      type: Number,
+      default: 1,
+    },
+    components: {
+      basicPay: { type: Number, default: 100 },
+      hra: { type: Number, default: 40 },
+      medical: { type: Number, default: 10 },
+      standardAllowance: { type: Number, default: 15 },
+      conveyanceAllowance: { type: Number, default: 10 },
+      nightAllowance: { type: Number, default: 0 },
+      ltc: { type: Number, default: 0 },
+      otherIncome: { type: Number, default: 0 },
+    },
   },
   employee: {
     type: mongoose.Schema.Types.ObjectId,
@@ -35,6 +121,8 @@ const userSchema = new mongoose.Schema({
   },
   lastLogin: Date,
 }, { timestamps: true });
+
+userSchema.index({ distributorCode: 1 }, { unique: true, sparse: true });
 
 // Hash password before save
 userSchema.pre('save', async function (next) {

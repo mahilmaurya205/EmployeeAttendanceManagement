@@ -1,5 +1,12 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User.model');
+const Employee = require('../models/Employee.model');
+const {
+  ROLES,
+  ATTENDANCE_MODIFY_ROLES,
+  EMPLOYEE_MANAGEMENT_ROLES,
+  REPORT_VIEW_ROLES,
+} = require('../utils/access');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey123';
 
@@ -20,6 +27,20 @@ const authenticate = async (req, res, next) => {
 
     if (!user || !user.isActive) {
       return res.status(401).json({ success: false, message: 'User not found or deactivated.' });
+    }
+
+    // Legacy single-tenant data migration for the original seeded admin account.
+    if (user.role === ROLES.ADMIN && user.email === 'admin@company.com') {
+      await Promise.all([
+        User.updateMany(
+          { role: { $in: [ROLES.EMPLOYEE, ROLES.MANAGER, ROLES.HR, ROLES.SUPERVISOR] }, adminOwner: { $exists: false } },
+          { $set: { adminOwner: user._id } }
+        ),
+        Employee.updateMany(
+          { adminOwner: { $exists: false } },
+          { $set: { adminOwner: user._id } }
+        ),
+      ]);
     }
 
     req.user = user;
@@ -48,14 +69,14 @@ const authorize = (...roles) => {
   };
 };
 
-// Check if user can modify attendance (Admin, Manager only)
-const canModifyAttendance = authorize('Admin', 'Manager');
+// Check if user can modify attendance
+const canModifyAttendance = authorize(...ATTENDANCE_MODIFY_ROLES);
 
-// Check if user can view reports (Admin, Manager, HR, Supervisor)
-const canViewReports = authorize('Admin', 'Manager', 'HR', 'Supervisor');
+// Check if user can view reports
+const canViewReports = authorize(...REPORT_VIEW_ROLES);
 
-// Check if user can manage employees (Admin, Manager)
-const canManageEmployees = authorize('Admin', 'Manager');
+// Check if user can manage employees
+const canManageEmployees = authorize(...EMPLOYEE_MANAGEMENT_ROLES);
 
 module.exports = authenticate;
 module.exports.authenticate = authenticate;

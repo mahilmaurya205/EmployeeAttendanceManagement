@@ -6,7 +6,7 @@ const connectDB = require("./config/database");
 
 const PORT = process.env.PORT || 5000;
 
-console.log("MONGO_URI:", process.env.MONGO_URI); // DEBUG
+console.log("MONGODB_URI configured:", Boolean(process.env.MONGODB_URI));
 
 connectDB()
   .then(() => {

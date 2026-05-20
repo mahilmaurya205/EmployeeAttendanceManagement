@@ -4,6 +4,13 @@ const User = require('../models/User.model');
 const AttendanceLog = require('../models/AttendanceLog.model');
 const AttendanceSummary = require('../models/AttendanceSummary.model');
 const { saveBase64Image } = require('../middleware/upload.middleware');
+const {
+  ROLES,
+  asId,
+  getAdminOwnerId,
+  getDistributorOwnerId,
+  buildEmployeeScopeFilter,
+} = require('../utils/access');
 
 const safeJsonParse = (value, fallback = undefined) => {
   if (value == null || value === '') return fallback;
@@ -26,7 +33,7 @@ const buildPhotoPath = (file) => {
 exports.listEmployees = async (req, res, next) => {
   try {
     const { department, isActive, page = 1, limit = 20, search } = req.query;
-    const filter = {};
+    const filter = { ...buildEmployeeScopeFilter(req.user) };
 
     if (department) filter.department = department;
     if (isActive !== undefined) filter.isActive = isActive === 'true';
@@ -69,7 +76,7 @@ exports.listEmployees = async (req, res, next) => {
 
 exports.getEmployee = async (req, res, next) => {
   try {
-    const employee = await Employee.findById(req.params.id)
+    const employee = await Employee.findOne({ _id: req.params.id, ...buildEmployeeScopeFilter(req.user) })
       .populate('reportingTo', 'name employeeCode department')
       .populate('user', 'email role lastLogin isActive');
 
@@ -78,7 +85,7 @@ exports.getEmployee = async (req, res, next) => {
     }
 
     const data = employee.toObject();
-    if (!['Admin', 'Manager'].includes(req.user.role)) {
+    if (![ROLES.ADMIN, ROLES.MANAGER].includes(req.user.role)) {
       data.aadharNo = data.aadharNo ? `XXXX-XXXX-${data.aadharNo.slice(-4)}` : null;
       data.panNo = data.panNo ? `XXXXX${data.panNo.slice(-4)}` : null;
     }
@@ -105,6 +112,7 @@ exports.createEmployee = async (req, res, next) => {
       mobile,
       department,
       designation,
+      basicSalary,
       aadharNo,
       panNo,
       address,
@@ -143,11 +151,14 @@ exports.createEmployee = async (req, res, next) => {
       mobile: String(mobile).trim(),
       department,
       designation,
+      basicSalary: Number(basicSalary),
       aadharNo: String(aadharNo).trim(),
       panNo: normalizedPan,
       address: safeJsonParse(address, address),
       reportingTo: reportingTo || null,
       workSchedule: safeJsonParse(workSchedule, workSchedule),
+      adminOwner: getAdminOwnerId(req.user),
+      distributorOwner: getDistributorOwnerId(req.user),
     };
 
     const photoPath = buildPhotoPath(req.file);
@@ -160,8 +171,11 @@ exports.createEmployee = async (req, res, next) => {
       name: employee.name,
       email: employee.email,
       password: userPassword,
-      role: 'Employee',
+      role: ROLES.EMPLOYEE,
       employee: employee._id,
+      creator: req.user._id,
+      adminOwner: getAdminOwnerId(req.user),
+      distributorOwner: getDistributorOwnerId(req.user),
     });
 
     employee.user = user._id;
@@ -180,7 +194,7 @@ exports.createEmployee = async (req, res, next) => {
 
 exports.updateEmployee = async (req, res, next) => {
   try {
-    const employee = await Employee.findById(req.params.id);
+    const employee = await Employee.findOne({ _id: req.params.id, ...buildEmployeeScopeFilter(req.user) });
     if (!employee) {
       return res.status(404).json({ success: false, message: 'Employee not found.' });
     }
@@ -193,6 +207,14 @@ exports.updateEmployee = async (req, res, next) => {
         updateData[field] = req.body[field];
       }
     });
+
+    if (req.body.basicSalary !== undefined && req.body.basicSalary !== '') {
+      const basicSalary = Number(req.body.basicSalary);
+      if (!Number.isFinite(basicSalary) || basicSalary < 0) {
+        return res.status(400).json({ success: false, message: 'Basic salary must be a valid non-negative amount.' });
+      }
+      updateData.basicSalary = basicSalary;
+    }
 
     if (req.body.address !== undefined) {
       updateData.address = safeJsonParse(req.body.address, employee.address);
@@ -220,7 +242,7 @@ exports.updateEmployee = async (req, res, next) => {
       }
     }
 
-    const updated = await Employee.findByIdAndUpdate(req.params.id, updateData, {
+    const updated = await Employee.findOneAndUpdate({ _id: req.params.id, ...buildEmployeeScopeFilter(req.user) }, updateData, {
       new: true,
       runValidators: true,
     });
@@ -252,7 +274,11 @@ exports.updateEmployee = async (req, res, next) => {
 
 exports.deleteEmployee = async (req, res, next) => {
   try {
-    const employee = await Employee.findByIdAndUpdate(req.params.id, { isActive: false }, { new: true });
+    const employee = await Employee.findOneAndUpdate(
+      { _id: req.params.id, ...buildEmployeeScopeFilter(req.user) },
+      { isActive: false },
+      { new: true }
+    );
 
     if (!employee) {
       return res.status(404).json({ success: false, message: 'Employee not found.' });
@@ -270,7 +296,7 @@ exports.deleteEmployee = async (req, res, next) => {
 
 exports.toggleEmployeeActive = async (req, res, next) => {
   try {
-    const employee = await Employee.findById(req.params.id);
+    const employee = await Employee.findOne({ _id: req.params.id, ...buildEmployeeScopeFilter(req.user) });
 
     if (!employee) {
       return res.status(404).json({ success: false, message: 'Employee not found.' });
@@ -295,7 +321,7 @@ exports.toggleEmployeeActive = async (req, res, next) => {
 
 exports.deleteEmployeePermanent = async (req, res, next) => {
   try {
-    const employee = await Employee.findById(req.params.id);
+    const employee = await Employee.findOne({ _id: req.params.id, ...buildEmployeeScopeFilter(req.user) });
 
     if (!employee) {
       return res.status(404).json({ success: false, message: 'Employee not found.' });
@@ -320,7 +346,7 @@ exports.deleteEmployeePermanent = async (req, res, next) => {
 
 exports.enrollFace = async (req, res, next) => {
   try {
-    const employee = await Employee.findById(req.params.id);
+    const employee = await Employee.findOne({ _id: req.params.id, ...buildEmployeeScopeFilter(req.user) });
     if (!employee) {
       return res.status(404).json({ success: false, message: 'Employee not found.' });
     }
@@ -355,13 +381,13 @@ exports.getFaceDescriptors = async (req, res, next) => {
   try {
     const selfEmployeeId = req.user.employee?._id?.toString() || req.user.employee?.toString();
     const isSelf = selfEmployeeId === req.params.id;
-    const isPrivileged = ['Admin', 'Manager', 'HR', 'Supervisor'].includes(req.user.role);
+    const isPrivileged = [ROLES.ADMIN, ROLES.MANAGER, ROLES.HR, ROLES.SUPERVISOR].includes(req.user.role);
 
     if (!isSelf && !isPrivileged) {
       return res.status(403).json({ success: false, message: 'Access denied.' });
     }
 
-    const employee = await Employee.findById(req.params.id).select('faceDescriptors faceEnrolled');
+    const employee = await Employee.findOne({ _id: req.params.id, ...buildEmployeeScopeFilter(req.user) }).select('faceDescriptors faceEnrolled');
     if (!employee) {
       return res.status(404).json({ success: false, message: 'Employee not found.' });
     }
@@ -380,7 +406,7 @@ exports.getFaceDescriptors = async (req, res, next) => {
 
 exports.getAllFaceDescriptors = async (req, res, next) => {
   try {
-    const employees = await Employee.find({ isActive: true, faceEnrolled: true })
+    const employees = await Employee.find({ ...buildEmployeeScopeFilter(req.user), isActive: true, faceEnrolled: true })
       .select('_id name employeeCode faceDescriptors');
 
     res.json({ success: true, data: employees });

@@ -1,5 +1,6 @@
 const AttendanceSummary = require('../models/AttendanceSummary.model');
 const Employee = require('../models/Employee.model');
+const { buildEmployeeScopeFilter } = require('../utils/access');
 
 exports.getMonthlyReport = async (req, res, next) => {
   try {
@@ -14,7 +15,7 @@ exports.getMonthlyReport = async (req, res, next) => {
     const lastDay = new Date(year, monthIndex, 0).getDate();
     const endDate = `${month}-${String(lastDay).padStart(2, '0')}`;
 
-    const employeeFilter = { isActive: true };
+    const employeeFilter = { ...buildEmployeeScopeFilter(req.user), isActive: true };
     if (department) employeeFilter.department = department;
 
     let employees;
@@ -71,20 +72,24 @@ exports.getDashboardStats = async (req, res, next) => {
   try {
     const today = new Date().toISOString().split('T')[0];
 
+    const employeeScope = buildEmployeeScopeFilter(req.user);
     const [
       totalEmployees,
       itSoftwareCount,
       itHardwareCount,
-      todayPresent,
-      todayHalfDay,
-      todayLate,
+      employeeIds,
     ] = await Promise.all([
-      Employee.countDocuments({ isActive: true }),
-      Employee.countDocuments({ isActive: true, department: 'IT Software' }),
-      Employee.countDocuments({ isActive: true, department: 'IT Hardware' }),
-      AttendanceSummary.countDocuments({ date: today, status: 'Present' }),
-      AttendanceSummary.countDocuments({ date: today, status: 'Half Day' }),
-      AttendanceSummary.countDocuments({ date: today, isLate: true }),
+      Employee.countDocuments({ ...employeeScope, isActive: true }),
+      Employee.countDocuments({ ...employeeScope, isActive: true, department: 'IT Software' }),
+      Employee.countDocuments({ ...employeeScope, isActive: true, department: 'IT Hardware' }),
+      Employee.find({ ...employeeScope, isActive: true }).select('_id'),
+    ]);
+
+    const scopedIds = employeeIds.map((item) => item._id);
+    const [todayPresent, todayHalfDay, todayLate] = await Promise.all([
+      AttendanceSummary.countDocuments({ date: today, employee: { $in: scopedIds }, status: 'Present' }),
+      AttendanceSummary.countDocuments({ date: today, employee: { $in: scopedIds }, status: 'Half Day' }),
+      AttendanceSummary.countDocuments({ date: today, employee: { $in: scopedIds }, isLate: true }),
     ]);
 
     const todayCheckedIn = todayPresent + todayHalfDay;
@@ -100,6 +105,7 @@ exports.getDashboardStats = async (req, res, next) => {
       trendDates.map(async (date) => {
         const present = await AttendanceSummary.countDocuments({
           date,
+          employee: { $in: scopedIds },
           status: { $in: ['Present', 'Half Day'] },
         });
         return { date, present };
