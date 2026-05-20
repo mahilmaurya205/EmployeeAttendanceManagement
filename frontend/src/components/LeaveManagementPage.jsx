@@ -23,6 +23,7 @@ export default function LeaveManagementPage() {
   const canApply = isEmployee();
   const [policy, setPolicy] = useState({ leaveTypes: [] });
   const [requests, setRequests] = useState([]);
+  const [approvedRequests, setApprovedRequests] = useState([]);
   const [policyDraft, setPolicyDraft] = useState([]);
   const [filterStatus, setFilterStatus] = useState('');
   const [loading, setLoading] = useState(true);
@@ -41,13 +42,15 @@ export default function LeaveManagementPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [policyRes, requestsRes] = await Promise.all([
+      const [policyRes, requestsRes, approvedRes] = await Promise.all([
         leaveAPI.getPolicy(),
         leaveAPI.listRequests({ status: filterStatus || undefined, year: currentYear }),
+        leaveAPI.listRequests({ status: 'Approved', year: currentYear }),
       ]);
       setPolicy(policyRes.data.data || { leaveTypes: [] });
       setPolicyDraft(policyRes.data.data?.leaveTypes || []);
       setRequests(requestsRes.data.data || []);
+      setApprovedRequests(approvedRes.data.data || []);
       setForm((prev) => ({
         ...prev,
         leaveTypeCode: prev.leaveTypeCode || policyRes.data.data?.leaveTypes?.find((item) => item.enabled)?.code || '',
@@ -58,6 +61,15 @@ export default function LeaveManagementPage() {
       setLoading(false);
     }
   };
+
+  const leaveTakenMap = useMemo(() => {
+    const map = {};
+    approvedRequests.forEach((req) => {
+      const code = req.leaveTypeCode;
+      map[code] = (map[code] || 0) + (req.totalDays || 0);
+    });
+    return map;
+  }, [approvedRequests]);
 
   useEffect(() => {
     loadData();
@@ -212,19 +224,56 @@ export default function LeaveManagementPage() {
 
       {!canReview && enabledLeaveTypes.length > 0 && (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {enabledLeaveTypes.map((leaveType) => (
-            <div key={leaveType.code} className="card">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h3 className="font-semibold text-white">{leaveType.name}</h3>
-                  <p className="text-sm text-slate-500">{leaveType.annualQuota} day(s) / year</p>
+          {enabledLeaveTypes.map((leaveType) => {
+            const taken = leaveTakenMap[leaveType.code] || 0;
+            const percentage = leaveType.annualQuota > 0
+              ? Math.min(100, Math.round((taken / leaveType.annualQuota) * 100))
+              : 0;
+
+            return (
+              <div key={leaveType.code} className="card flex flex-col justify-between gap-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-emerald-500/5">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="font-semibold text-white">{leaveType.name}</h3>
+                    <p className="text-xs text-slate-400 mt-1">
+                      {leaveType.isPaid ? 'Paid Leave Template' : 'Unpaid Leave Template'}
+                    </p>
+                  </div>
+                  <span className={`badge ${leaveType.isPaid ? 'badge-success' : 'badge-warning'}`}>
+                    {leaveType.isPaid ? 'Paid' : 'Unpaid'}
+                  </span>
                 </div>
-                <span className={`badge ${leaveType.isPaid ? 'badge-success' : 'badge-warning'}`}>
-                  {leaveType.isPaid ? 'Paid' : 'Unpaid'}
-                </span>
+
+                <div className="space-y-2">
+                  <div className="flex items-end justify-between text-xs">
+                    <span className="text-slate-400">Usage</span>
+                    <span className="font-medium text-white">
+                      <span className="text-emerald-400 font-semibold">{taken}</span> / {leaveType.annualQuota} days taken
+                    </span>
+                  </div>
+                  
+                  {/* Premium Progress Bar */}
+                  <div className="h-2 w-full rounded-full bg-slate-800 overflow-hidden">
+                    <div 
+                      className={`h-full rounded-full transition-all duration-500 bg-gradient-to-r ${
+                        percentage >= 90 
+                          ? 'from-rose-500 to-pink-500' 
+                          : percentage >= 75 
+                          ? 'from-amber-500 to-orange-400' 
+                          : 'from-emerald-500 to-teal-400'
+                      }`}
+                      style={{ width: `${percentage}%` }}
+                    />
+                  </div>
+                  
+                  <div className="flex justify-between text-[10px] text-slate-500">
+                    <span>{percentage}% Used</span>
+                    <span>{Math.max(0, leaveType.annualQuota - taken)} Days Left</span>
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

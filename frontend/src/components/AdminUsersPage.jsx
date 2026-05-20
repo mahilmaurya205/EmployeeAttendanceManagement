@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { adminAPI, resolveUploadUrl } from '../utils/api/api';
+import { adminAPI, paymentAPI, resolveUploadUrl } from '../utils/api/api';
 import useAuthStore from '../store/authStore';
 import { INDIAN_STATES, getDistrictsForState } from '../utils/indiaLocations';
 
@@ -23,6 +23,7 @@ const emptyDistributorForm = {
 const emptyAdminForm = {
   name: '',
   companyName: '',
+  planCode: '',
   gstNo: '',
   aadharNo: '',
   panNo: '',
@@ -84,6 +85,7 @@ export default function AdminUsersPage() {
   const location = useLocation();
   const { user, isSuperAdmin, isDistributor, isAdmin } = useAuthStore();
   const [users, setUsers] = useState([]);
+  const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState('');
   const [selectedCompanyId, setSelectedCompanyId] = useState('');
@@ -99,6 +101,7 @@ export default function AdminUsersPage() {
 
   useEffect(() => {
     fetchUsers();
+    fetchPlans();
   }, []);
 
   const fetchUsers = async () => {
@@ -111,6 +114,17 @@ export default function AdminUsersPage() {
       toast.error('Failed to load users');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchPlans = async () => {
+    try {
+      const res = await paymentAPI.plans();
+      const activePlans = (res.data.data || []).filter((plan) => plan.isActive);
+      setPlans(activePlans);
+      setAdminForm((prev) => (prev.planCode || activePlans.length === 0 ? prev : { ...prev, planCode: activePlans[0].code }));
+    } catch (error) {
+      toast.error('Failed to load plans');
     }
   };
 
@@ -191,6 +205,22 @@ export default function AdminUsersPage() {
     }
   };
 
+  const formatPlanDate = (value) => {
+    if (!value) return 'N/A';
+    return new Date(value).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  };
+
+  const renderSubscription = (item) => {
+    if (item.role !== 'Admin') return <span className="text-slate-500">N/A</span>;
+    return (
+      <div className="space-y-1">
+        <p className="font-medium text-slate-200">{item.subscription?.planLabel || 'No plan'}</p>
+        <p className="text-xs text-slate-500">Ends {formatPlanDate(item.subscription?.endDate)}</p>
+        {item.renewalNotice && <p className="text-xs text-amber-300">{item.renewalNotice.message}</p>}
+      </div>
+    );
+  };
+
   const submitDistributor = async (e) => {
     e.preventDefault();
     setSubmitting('distributor');
@@ -217,7 +247,7 @@ export default function AdminUsersPage() {
     try {
       await adminAPI.createUser(buildFormData({ ...adminForm, role: 'Admin' }));
       toast.success('Admin created successfully');
-      setAdminForm(emptyAdminForm);
+      setAdminForm({ ...emptyAdminForm, planCode: plans[0]?.code || '' });
       fetchUsers();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to create admin');
@@ -285,6 +315,7 @@ export default function AdminUsersPage() {
             {item.isActive ? 'Active' : 'Inactive'}
           </span>
         </td>
+        <td className="py-3 px-4">{renderSubscription(item)}</td>
         <td className="py-3 px-4">
           <div className="flex flex-wrap items-center gap-2">
             <button onClick={() => handleResetPassword(item)} className="btn-primary btn-sm whitespace-nowrap">Set Password</button>
@@ -405,6 +436,7 @@ export default function AdminUsersPage() {
                     <th className="text-left py-3 px-4">Distributor</th>
                     <th className="text-left py-3 px-4">Role</th>
                     <th className="text-left py-3 px-4">Status</th>
+                    <th className="text-left py-3 px-4">Plan</th>
                     <th className="text-left py-3 px-4">Actions</th>
                   </tr>
                 </thead>
@@ -431,6 +463,14 @@ export default function AdminUsersPage() {
               </FormField>
               <FormField label="Company Name *">
                 <input className="input" value={adminForm.companyName} onChange={(e) => setAdminForm((prev) => ({ ...prev, companyName: e.target.value }))} required />
+              </FormField>
+              <FormField label="Plan *">
+                <select className="input" value={adminForm.planCode} onChange={(e) => setAdminForm((prev) => ({ ...prev, planCode: e.target.value }))} required>
+                  <option value="">Select Plan</option>
+                  {plans.map((plan) => (
+                    <option key={plan.code} value={plan.code}>{plan.label} - Rs. {plan.amounts?.total || 0}</option>
+                  ))}
+                </select>
               </FormField>
               <FormField label="Logo">
                 <input className="input file:mr-3 file:border-0 file:bg-slate-800 file:px-3 file:py-2 file:text-slate-200" type="file" accept="image/*" onChange={(e) => setAdminForm((prev) => ({ ...prev, logo: e.target.files?.[0] || null }))} />
@@ -482,6 +522,7 @@ export default function AdminUsersPage() {
                     <p className="font-semibold text-white">{company.companyName || company.name}</p>
                     <p className="text-sm text-slate-400 mt-1">{company.email}</p>
                     <p className="text-xs text-slate-500 mt-2">{company.name}</p>
+                    <p className="text-xs text-slate-400 mt-2">{company.subscription?.planLabel || 'No plan'} - Ends {formatPlanDate(company.subscription?.endDate)}</p>
                   </button>
                 ))}
               </div>
@@ -519,6 +560,7 @@ export default function AdminUsersPage() {
                           <th className="text-left py-3 px-4">User</th>
                           <th className="text-left py-3 px-4">Role</th>
                           <th className="text-left py-3 px-4">Status</th>
+                          <th className="text-left py-3 px-4">Plan</th>
                           <th className="text-left py-3 px-4">Actions</th>
                         </tr>
                       </thead>
@@ -550,6 +592,14 @@ export default function AdminUsersPage() {
                 </FormField>
                 <FormField label="Company Name *">
                   <input className="input" value={adminForm.companyName} onChange={(e) => setAdminForm((prev) => ({ ...prev, companyName: e.target.value }))} required />
+                </FormField>
+                <FormField label="Plan *">
+                  <select className="input" value={adminForm.planCode} onChange={(e) => setAdminForm((prev) => ({ ...prev, planCode: e.target.value }))} required>
+                    <option value="">Select Plan</option>
+                    {plans.map((plan) => (
+                      <option key={plan.code} value={plan.code}>{plan.label} - Rs. {plan.amounts?.total || 0}</option>
+                    ))}
+                  </select>
                 </FormField>
                 <FormField label="Logo">
                   <input className="input file:mr-3 file:border-0 file:bg-slate-800 file:px-3 file:py-2 file:text-slate-200" type="file" accept="image/*" onChange={(e) => setAdminForm((prev) => ({ ...prev, logo: e.target.files?.[0] || null }))} />
@@ -627,6 +677,7 @@ export default function AdminUsersPage() {
                     <th className="text-left py-3 px-4">Account</th>
                     <th className="text-left py-3 px-4">Role</th>
                     <th className="text-left py-3 px-4">Status</th>
+                    <th className="text-left py-3 px-4">Plan</th>
                     <th className="text-left py-3 px-4">Actions</th>
                   </tr>
                 </thead>

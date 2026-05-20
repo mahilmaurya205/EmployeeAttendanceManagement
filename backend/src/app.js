@@ -26,6 +26,9 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
+const paymentController = require('./controllers/payment.controller');
+app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), paymentController.handleWebhook);
+
 // Body parsing
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
@@ -46,6 +49,7 @@ const repRoutes = require('./routes/report.routes');
 const adminRoutes = require('./routes/admin.routes');
 const leaveRoutes = require('./routes/leave.routes');
 const payrollRoutes = require('./routes/payroll.routes');
+const paymentRoutes = require('./routes/payment.routes');
 
 console.log("auth:", typeof authRoutes);
 console.log("employee:", typeof empRoutes);
@@ -54,6 +58,7 @@ console.log("report:", typeof repRoutes);
 console.log("admin:", typeof adminRoutes);
 console.log("leave:", typeof leaveRoutes);
 console.log("payroll:", typeof payrollRoutes);
+console.log("payments:", typeof paymentRoutes);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/employees', empRoutes);
@@ -62,6 +67,7 @@ app.use('/api/reports', repRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/leaves', leaveRoutes);
 app.use('/api/payroll', payrollRoutes);
+app.use('/api/payments', paymentRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

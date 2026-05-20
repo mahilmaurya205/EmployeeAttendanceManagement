@@ -2,6 +2,7 @@ const User = require('../models/User.model');
 const Employee = require('../models/Employee.model');
 const AttendanceLog = require('../models/AttendanceLog.model');
 const AttendanceSummary = require('../models/AttendanceSummary.model');
+const PlanSetting = require('../models/PlanSetting.model');
 const {
   ROLES,
   ALL_ROLES,
@@ -12,6 +13,12 @@ const {
   getDistributorOwnerId,
   buildUserScopeFilter,
 } = require('../utils/access');
+const {
+  PLAN_DEFINITIONS,
+  PLAN_CODES,
+  calculateTaxes,
+  buildRenewalNotice,
+} = require('../utils/subscription.utils');
 
 const normalizeString = (value) => {
   if (value == null) return undefined;
@@ -24,6 +31,25 @@ const buildAssetPath = (file) => {
   const normalized = file.path.replace(/\\/g, '/');
   const uploadIndex = normalized.lastIndexOf('uploads/');
   return uploadIndex >= 0 ? normalized.substring(uploadIndex) : normalized;
+};
+
+const getPlanForAdminCreation = async (planCode) => {
+  if (!PLAN_CODES.includes(planCode)) return null;
+  const definition = PLAN_DEFINITIONS[planCode];
+  return PlanSetting.findOneAndUpdate(
+    { code: planCode },
+    {
+      $setOnInsert: {
+        code: planCode,
+        label: definition.label,
+        months: definition.months,
+        basePrice: 0,
+        taxes: { gst: 0, cgst: 0, sgst: 0, igst: 0 },
+        isActive: true,
+      },
+    },
+    { new: true, upsert: true }
+  );
 };
 
 const findScopedUser = (requestUser, targetId) => User.findOne({
@@ -55,7 +81,13 @@ exports.listUsers = async (req, res, next) => {
       .populate('employee', 'name employeeCode department')
       .sort({ createdAt: -1 });
 
-    res.json({ success: true, data: users });
+    const data = users.map((user) => {
+      const plain = user.toJSON();
+      plain.renewalNotice = buildRenewalNotice(user.subscription);
+      return plain;
+    });
+
+    res.json({ success: true, data });
   } catch (err) {
     next(err);
   }
@@ -260,9 +292,14 @@ exports.createUser = async (req, res, next) => {
       && role === ROLES.ADMIN
     ) {
       const companyName = normalizeString(req.body.companyName);
+      const selectedPlan = await getPlanForAdminCreation(req.body.planCode);
       if (!companyName) {
         return res.status(400).json({ success: false, message: 'Company Name is required for Admin.' });
       }
+      if (!selectedPlan || !selectedPlan.isActive) {
+        return res.status(400).json({ success: false, message: 'Please select a valid active plan for this Admin.' });
+      }
+      const selectedPlanAmounts = calculateTaxes(selectedPlan.basePrice, selectedPlan.taxes);
 
       payload = {
         name: normalizeString(name),
@@ -276,6 +313,19 @@ exports.createUser = async (req, res, next) => {
         aadharNo: normalizeString(req.body.aadharNo),
         creator: req.user._id,
         distributorOwner: requesterRole === ROLES.DISTRIBUTOR ? req.user._id : undefined,
+        subscription: {
+          planCode: selectedPlan.code,
+          planLabel: selectedPlan.label,
+          planSnapshot: {
+            label: selectedPlan.label,
+            months: selectedPlan.months,
+            basePrice: selectedPlanAmounts.base,
+            taxes: selectedPlan.taxes,
+            amounts: selectedPlanAmounts,
+          },
+          status: 'pending_payment',
+          createdBy: req.user._id,
+        },
       };
     } else if (requesterRole === ROLES.ADMIN && ADMIN_STAFF_ROLES.includes(role)) {
       payload = {
@@ -301,7 +351,10 @@ exports.createUser = async (req, res, next) => {
       await user.save();
     }
 
-    res.status(201).json({ success: true, data: user });
+    const plainUser = user.toJSON();
+    plainUser.renewalNotice = buildRenewalNotice(user.subscription);
+
+    res.status(201).json({ success: true, data: plainUser });
   } catch (err) {
     next(err);
   }

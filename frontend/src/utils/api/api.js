@@ -27,6 +27,9 @@ api.interceptors.response.use(
       localStorage.removeItem('att_user');
       window.location.href = '/login';
     }
+    if (error.response?.status === 402 && window.location.pathname !== '/billing') {
+      window.location.href = '/billing';
+    }
     return Promise.reject(error);
   }
 );
@@ -78,6 +81,15 @@ export const adminAPI = {
   createUser: (data) => api.post('/admin/users', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
   deleteUser: (id) => api.delete(`/admin/users/${id}`),
   resetPassword: (id, newPassword) => api.put(`/admin/users/${id}/password`, { newPassword }),
+};
+
+export const paymentAPI = {
+  plans: () => api.get('/payments/plans'),
+  updatePlans: (plans) => api.put('/payments/plans', { plans }),
+  transactions: () => api.get('/payments/transactions'),
+  receipt: (id) => api.get(`/payments/transactions/${id}/receipt`),
+  createRenewalOrder: (planCode) => api.post('/payments/renewal/order', { planCode }),
+  verifyRenewalPayment: (data) => api.post('/payments/renewal/verify', data),
 };
 
 export const leaveAPI = {

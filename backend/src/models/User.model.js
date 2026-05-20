@@ -111,6 +111,47 @@ const userSchema = new mongoose.Schema({
       otherIncome: { type: Number, default: 0 },
     },
   },
+  subscription: {
+    planCode: {
+      type: String,
+      enum: ['monthly', 'six_month', 'yearly'],
+    },
+    planLabel: String,
+    planSnapshot: {
+      label: String,
+      months: Number,
+      basePrice: Number,
+      taxes: {
+        gst: Number,
+        cgst: Number,
+        sgst: Number,
+        igst: Number,
+      },
+      amounts: {
+        base: Number,
+        gst: Number,
+        cgst: Number,
+        sgst: Number,
+        igst: Number,
+        total: Number,
+      },
+    },
+    startDate: Date,
+    endDate: Date,
+    status: {
+      type: String,
+      enum: ['active', 'expired', 'none', 'pending_payment'],
+      default: 'none',
+    },
+    lastPayment: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Payment',
+    },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
+  },
   employee: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Employee',

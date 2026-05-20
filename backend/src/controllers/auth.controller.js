@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User.model');
 const { ROLES, getAdminOwnerId } = require('../utils/access');
+const { buildRenewalNotice } = require('../utils/subscription.utils');
 
 const generateToken = (userId) => {
   return jwt.sign({ id: userId }, process.env.JWT_SECRET || 'supersecretkey123', {
@@ -18,7 +19,7 @@ const enrichUser = async (user) => {
   if (user.role === ROLES.ADMIN) {
     adminOwner = user;
   } else if (adminOwnerId) {
-    adminOwner = await User.findById(adminOwnerId).select('name companyName officeLocation attendancePolicy payrollPolicy');
+    adminOwner = await User.findById(adminOwnerId).select('name companyName officeLocation attendancePolicy payrollPolicy subscription');
   }
 
   plain.resolvedOfficeLocation = adminOwner?.officeLocation || null;
@@ -26,6 +27,8 @@ const enrichUser = async (user) => {
   plain.adminName = adminOwner?.name || null;
   plain.resolvedAttendancePolicy = adminOwner?.attendancePolicy || null;
   plain.resolvedPayrollPolicy = adminOwner?.payrollPolicy || null;
+  plain.renewalNotice = buildRenewalNotice(user.role === ROLES.ADMIN ? user.subscription : adminOwner?.subscription);
+  plain.paymentRequired = user.role === ROLES.ADMIN && user.subscription?.status === 'pending_payment';
 
   return plain;
 };

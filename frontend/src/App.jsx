@@ -22,6 +22,7 @@ import AdminUsersPage from './components/AdminUsersPage';
 import ProfilePage from './components/ProfilePage';
 import PayrollPage from './components/PayrollPage';
 import LeaveManagementPage from './components/LeaveManagementPage';
+import BillingPage from './components/BillingPage';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -115,6 +116,9 @@ function AppRoutes() {
             <Route path="admin/users" element={<AdminUsersPage />} />
             <Route path="admin/distributors" element={<AdminUsersPage />} />
             <Route path="admin/companies" element={<AdminUsersPage />} />
+          </Route>
+          <Route element={<ProtectedRoute roles={['SuperAdmin', 'Admin']} />}>
+            <Route path="billing" element={<BillingPage />} />
           </Route>
           <Route element={<ProtectedRoute roles={['Employee', 'Admin', 'Manager', 'HR', 'Supervisor']} />}>
             <Route path="attendance" element={<AttendancePage />} />

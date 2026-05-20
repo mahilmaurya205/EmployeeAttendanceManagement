@@ -44,6 +44,19 @@ const authenticate = async (req, res, next) => {
     }
 
     req.user = user;
+
+    if (
+      user.role === ROLES.ADMIN
+      && user.subscription?.status === 'pending_payment'
+      && !req.originalUrl.startsWith('/api/payments')
+      && !req.originalUrl.startsWith('/api/auth')
+    ) {
+      return res.status(402).json({
+        success: false,
+        message: 'Payment is required before using this feature.',
+      });
+    }
+
     next();
   } catch (error) {
     if (error.name === 'JsonWebTokenError') {

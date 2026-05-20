@@ -53,6 +53,13 @@ export default function AppLayout() {
           icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />,
         }]
       : []),
+    ...(isAdmin()
+      ? [{
+          to: '/billing',
+          label: 'Billing',
+          icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-2m0-6h4a2 2 0 012 2v2a2 2 0 01-2 2h-4m0-6v6" />,
+        }]
+      : []),
     {
       to: '/profile',
       label: 'Profile',
@@ -76,6 +83,13 @@ export default function AppLayout() {
           to: '/admin/companies',
           label: 'Companies',
           icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4M9 9h.01M9 12h.01M9 15h.01M9 18h.01M13 12h.01M13 15h.01M13 18h.01" />,
+        }]
+      : []),
+    ...(isSuperAdmin() || isAdmin()
+      ? [{
+          to: '/billing',
+          label: 'Billing',
+          icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-2m0-6h4a2 2 0 012 2v2a2 2 0 01-2 2h-4m0-6v6" />,
         }]
       : []),
     {
@@ -169,6 +183,16 @@ export default function AppLayout() {
 
       <main className="flex-1 overflow-auto bg-slate-950">
         <div className="p-6">
+          {user?.paymentRequired && (
+            <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-950/30 px-4 py-3 text-sm text-amber-200">
+              Payment is required for your selected company plan before using the application.
+            </div>
+          )}
+          {user?.renewalNotice && (
+            <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-950/30 px-4 py-3 text-sm text-amber-200">
+              {user.renewalNotice.message}
+            </div>
+          )}
           <Outlet />
         </div>
       </main>
