@@ -128,15 +128,28 @@ exports.updateProfile = async (req, res) => {
     }
 
     if (user.role === ROLES.ADMIN && req.body.attendancePolicy) {
-      const halfDayLateAfterMinutes = Number(req.body.attendancePolicy.halfDayLateAfterMinutes);
+      const currentPolicy = user.attendancePolicy || {};
+      const halfDayLateAfterMinutes = Number(req.body.attendancePolicy.halfDayLateAfterMinutes ?? currentPolicy.halfDayLateAfterMinutes ?? 30);
+      const teaBreakMinutes = Number(req.body.attendancePolicy.teaBreakMinutes ?? currentPolicy.teaBreakMinutes ?? 15);
+      const lunchBreakMinutes = Number(req.body.attendancePolicy.lunchBreakMinutes ?? currentPolicy.lunchBreakMinutes ?? 40);
 
       if (!Number.isFinite(halfDayLateAfterMinutes) || halfDayLateAfterMinutes < 0) {
         return res.status(400).json({ success: false, message: 'Valid half day late minutes are required.' });
       }
 
+      if (!Number.isFinite(teaBreakMinutes) || teaBreakMinutes < 0) {
+        return res.status(400).json({ success: false, message: 'Valid tea break minutes are required.' });
+      }
+
+      if (!Number.isFinite(lunchBreakMinutes) || lunchBreakMinutes < 0) {
+        return res.status(400).json({ success: false, message: 'Valid lunch break minutes are required.' });
+      }
+
       user.attendancePolicy = {
         ...(user.attendancePolicy || {}),
         halfDayLateAfterMinutes,
+        teaBreakMinutes,
+        lunchBreakMinutes,
       };
     }
 

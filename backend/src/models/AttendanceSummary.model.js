@@ -1,5 +1,20 @@
 const mongoose = require('mongoose');
 
+const breakReviewSchema = new mongoose.Schema({
+  status: {
+    type: String,
+    enum: ['Pending', 'Approved', 'Rejected'],
+    default: 'Pending',
+  },
+  reason: String,
+  note: String,
+  reviewedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  },
+  reviewedAt: Date,
+}, { _id: false });
+
 // Aggregated daily record per employee
 const attendanceSummarySchema = new mongoose.Schema({
   employee: {
@@ -14,11 +29,30 @@ const attendanceSummarySchema = new mongoose.Schema({
   punchIn:   Date,
   punchOut:  Date,
   breaks: [{
+    type: {
+      type: String,
+      enum: ['GENERAL', 'TEA', 'LUNCH'],
+      default: 'GENERAL',
+    },
     start: Date,
     end:   Date,
     duration: Number, // minutes
+    allowedDuration: { type: Number, default: 0 },
+    lateByMinutes: { type: Number, default: 0 },
   }],
   totalBreakMinutes: { type: Number, default: 0 },
+  teaBreakMinutes: { type: Number, default: 0 },
+  lunchBreakMinutes: { type: Number, default: 0 },
+  teaBreakLateByMinutes: { type: Number, default: 0 },
+  lunchBreakLateByMinutes: { type: Number, default: 0 },
+  teaBreakReview: {
+    type: breakReviewSchema,
+    default: () => ({ status: 'Pending' }),
+  },
+  lunchBreakReview: {
+    type: breakReviewSchema,
+    default: () => ({ status: 'Pending' }),
+  },
   totalWorkMinutes:  { type: Number, default: 0 },
   status: {
     type: String,

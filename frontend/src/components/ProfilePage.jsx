@@ -19,6 +19,8 @@ export default function ProfilePage() {
   });
   const [attendancePolicy, setAttendancePolicy] = useState({
     halfDayLateAfterMinutes: user?.attendancePolicy?.halfDayLateAfterMinutes ?? user?.resolvedAttendancePolicy?.halfDayLateAfterMinutes ?? 30,
+    teaBreakMinutes: user?.attendancePolicy?.teaBreakMinutes ?? user?.resolvedAttendancePolicy?.teaBreakMinutes ?? 15,
+    lunchBreakMinutes: user?.attendancePolicy?.lunchBreakMinutes ?? user?.resolvedAttendancePolicy?.lunchBreakMinutes ?? 40,
   });
 
   const handleChangePassword = async (e) => {
@@ -75,6 +77,8 @@ export default function ProfilePage() {
         },
         attendancePolicy: {
           halfDayLateAfterMinutes: Number(attendancePolicy.halfDayLateAfterMinutes),
+          teaBreakMinutes: Number(attendancePolicy.teaBreakMinutes),
+          lunchBreakMinutes: Number(attendancePolicy.lunchBreakMinutes),
         },
       });
       updateStoredUser(data.user);
@@ -149,6 +153,28 @@ export default function ProfilePage() {
                   required
                 />
               </div>
+              <div>
+                <label className="label text-sm text-slate-300">Tea Break Minutes</label>
+                <input
+                  type="number"
+                  min="0"
+                  className="input"
+                  value={attendancePolicy.teaBreakMinutes}
+                  onChange={(e) => setAttendancePolicy((prev) => ({ ...prev, teaBreakMinutes: e.target.value }))}
+                  required
+                />
+              </div>
+              <div>
+                <label className="label text-sm text-slate-300">Lunch Break Minutes</label>
+                <input
+                  type="number"
+                  min="0"
+                  className="input"
+                  value={attendancePolicy.lunchBreakMinutes}
+                  onChange={(e) => setAttendancePolicy((prev) => ({ ...prev, lunchBreakMinutes: e.target.value }))}
+                  required
+                />
+              </div>
             </div>
             <div className="flex gap-3">
               <button type="button" onClick={handleUseCurrentLocation} className="btn-secondary" disabled={savingLocation}>
@@ -159,7 +185,7 @@ export default function ProfilePage() {
               </button>
             </div>
             <p className="text-xs text-slate-500">
-              Latitude and longitude are captured automatically from your current device location. All users under this Admin will be required to punch in, punch out, break start, and break end within this radius. Half day will apply after the late minutes you set here.
+              Latitude and longitude are captured automatically from your current device location. All users under this Admin will be required to punch in, punch out, tea break, lunch break, and break end within this radius. Late tea and lunch minutes are calculated from the limits you set here.
             </p>
           </form>
         </div>

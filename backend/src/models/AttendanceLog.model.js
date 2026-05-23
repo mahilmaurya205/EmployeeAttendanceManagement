@@ -21,7 +21,16 @@ const attendanceLogSchema = new mongoose.Schema({
   },
   action: {
     type: String,
-    enum: ['PUNCH_IN', 'PUNCH_OUT', 'BREAK_START', 'BREAK_END'],
+    enum: [
+      'PUNCH_IN',
+      'PUNCH_OUT',
+      'BREAK_START',
+      'BREAK_END',
+      'TEA_BREAK_START',
+      'TEA_BREAK_END',
+      'LUNCH_BREAK_START',
+      'LUNCH_BREAK_END',
+    ],
     required: true,
   },
   timestamp: {

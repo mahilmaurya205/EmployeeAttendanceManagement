@@ -94,6 +94,14 @@ const userSchema = new mongoose.Schema({
       type: Number,
       default: 30,
     },
+    teaBreakMinutes: {
+      type: Number,
+      default: 15,
+    },
+    lunchBreakMinutes: {
+      type: Number,
+      default: 40,
+    },
   },
   payrollPolicy: {
     salarySlipGenerationDay: {

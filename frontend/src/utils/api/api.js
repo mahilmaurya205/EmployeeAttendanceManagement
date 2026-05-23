@@ -64,6 +64,8 @@ export const attendanceAPI = {
   history: (params) => api.get('/attendance/history', { params }),
   logsForDate: (date, params) => api.get(`/attendance/logs/${date}`, { params }),
   summaryForDate: (date, params) => api.get(`/attendance/summary/${date}`, { params }),
+  lateBreakReport: (date, params) => api.get(`/attendance/break-late/${date}`, { params }),
+  reviewLateBreak: (summaryId, data) => api.put(`/attendance/break-late/${summaryId}/review`, data),
   updateLog: (logId, data) => api.put(`/attendance/${logId}`, data),
 };
 

@@ -12,14 +12,22 @@ const ACTION_CONFIG = {
   PUNCH_OUT:   { label: 'Punch Out',   color: 'btn-danger',   next: null,          icon: '🔴' },
   BREAK_START: { label: 'Take Break',  color: 'btn-secondary',next: 'BREAK_END',   icon: '☕' },
   BREAK_END:   { label: 'Break Done',  color: 'btn-primary',  next: 'PUNCH_OUT',   icon: '▶️' },
+  TEA_BREAK_START: { label: 'Tea Break In', color: 'btn-secondary', next: 'TEA_BREAK_END', icon: 'Tea' },
+  TEA_BREAK_END: { label: 'Tea Break Out', color: 'btn-primary', next: 'PUNCH_OUT', icon: 'Done' },
+  LUNCH_BREAK_START: { label: 'Lunch Break In', color: 'btn-secondary', next: 'LUNCH_BREAK_END', icon: 'Lunch' },
+  LUNCH_BREAK_END: { label: 'Lunch Break Out', color: 'btn-primary', next: 'PUNCH_OUT', icon: 'Done' },
 };
 
 const ALLOWED_ACTIONS = {
   NOT_STARTED: ['PUNCH_IN'],
-  PUNCH_IN:    ['PUNCH_OUT', 'BREAK_START'],
+  PUNCH_IN: ['PUNCH_OUT', 'TEA_BREAK_START', 'LUNCH_BREAK_START'],
   BREAK_START: ['BREAK_END'],
-  BREAK_END:   ['PUNCH_OUT', 'BREAK_START'],
-  PUNCH_OUT:   [],
+  BREAK_END: ['PUNCH_OUT', 'TEA_BREAK_START', 'LUNCH_BREAK_START'],
+  TEA_BREAK_START: ['TEA_BREAK_END'],
+  TEA_BREAK_END: ['PUNCH_OUT', 'TEA_BREAK_START', 'LUNCH_BREAK_START'],
+  LUNCH_BREAK_START: ['LUNCH_BREAK_END'],
+  LUNCH_BREAK_END: ['PUNCH_OUT', 'TEA_BREAK_START', 'LUNCH_BREAK_START'],
+  PUNCH_OUT: [],
 };
 
 export default function AttendancePage() {
@@ -232,6 +240,20 @@ export default function AttendancePage() {
                 <span>⚠️</span> Late by {summary.lateByMinutes} minutes
               </div>
             )}
+            {(summary?.teaBreakLateByMinutes > 0 || summary?.lunchBreakLateByMinutes > 0) && (
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                {summary?.teaBreakLateByMinutes > 0 && (
+                  <div className="text-amber-300 bg-amber-900/20 border border-amber-800/30 rounded-lg px-3 py-2">
+                    Tea break late by {summary.teaBreakLateByMinutes} minutes
+                  </div>
+                )}
+                {summary?.lunchBreakLateByMinutes > 0 && (
+                  <div className="text-amber-300 bg-amber-900/20 border border-amber-800/30 rounded-lg px-3 py-2">
+                    Lunch break late by {summary.lunchBreakLateByMinutes} minutes
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Action Buttons */}
@@ -300,8 +322,26 @@ export default function AttendancePage() {
               <h2 className="font-semibold text-white mb-4">Today's Timeline</h2>
               <div className="space-y-3">
                 {logs.map((log, i) => {
-                  const colors = { PUNCH_IN: 'text-emerald-400 bg-emerald-900/40', PUNCH_OUT: 'text-red-400 bg-red-900/40', BREAK_START: 'text-amber-400 bg-amber-900/40', BREAK_END: 'text-blue-400 bg-blue-900/40' };
-                  const labels = { PUNCH_IN: 'Punch In', PUNCH_OUT: 'Punch Out', BREAK_START: 'Break Start', BREAK_END: 'Break End' };
+                  const colors = {
+                    PUNCH_IN: 'text-emerald-400 bg-emerald-900/40',
+                    PUNCH_OUT: 'text-red-400 bg-red-900/40',
+                    BREAK_START: 'text-amber-400 bg-amber-900/40',
+                    BREAK_END: 'text-blue-400 bg-blue-900/40',
+                    TEA_BREAK_START: 'text-amber-400 bg-amber-900/40',
+                    TEA_BREAK_END: 'text-blue-400 bg-blue-900/40',
+                    LUNCH_BREAK_START: 'text-orange-400 bg-orange-900/40',
+                    LUNCH_BREAK_END: 'text-blue-400 bg-blue-900/40',
+                  };
+                  const labels = {
+                    PUNCH_IN: 'Punch In',
+                    PUNCH_OUT: 'Punch Out',
+                    BREAK_START: 'Break Start',
+                    BREAK_END: 'Break End',
+                    TEA_BREAK_START: 'Tea Break In',
+                    TEA_BREAK_END: 'Tea Break Out',
+                    LUNCH_BREAK_START: 'Lunch Break In',
+                    LUNCH_BREAK_END: 'Lunch Break Out',
+                  };
                   return (
                     <div key={i} className="flex items-center gap-3">
                       <span className={`text-xs font-medium px-2 py-1 rounded-md ${colors[log.action]}`}>

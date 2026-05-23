@@ -18,6 +18,12 @@ router.get('/logs/:date', authenticate, canViewReports, attendanceController.get
 // GET /api/attendance/summary/:date - Daily summary (Admin/HR/Supervisor view)
 router.get('/summary/:date', authenticate, canViewReports, attendanceController.getSummaryForDate);
 
+// GET /api/attendance/break-late/:date - Tea/lunch late break report
+router.get('/break-late/:date', authenticate, canViewReports, attendanceController.getLateBreakReport);
+
+// PUT /api/attendance/break-late/:summaryId/review - Approve/reject late break reason
+router.put('/break-late/:summaryId/review', authenticate, canModifyAttendance, attendanceController.reviewLateBreak);
+
 // PUT /api/attendance/:logId - Manual correction (Admin/Manager only)
 router.put('/:logId', authenticate, canModifyAttendance, attendanceController.updateAttendanceLog);
 

@@ -77,6 +77,10 @@ export default function DashboardPage() {
     PUNCH_IN: { label: 'Checked In', color: 'text-emerald-400', bg: 'bg-emerald-900/30 border border-emerald-800/50' },
     BREAK_START: { label: 'On Break', color: 'text-amber-400', bg: 'bg-amber-900/30 border border-amber-800/50' },
     BREAK_END: { label: 'Checked In', color: 'text-emerald-400', bg: 'bg-emerald-900/30 border border-emerald-800/50' },
+    TEA_BREAK_START: { label: 'On Tea Break', color: 'text-amber-400', bg: 'bg-amber-900/30 border border-amber-800/50' },
+    TEA_BREAK_END: { label: 'Checked In', color: 'text-emerald-400', bg: 'bg-emerald-900/30 border border-emerald-800/50' },
+    LUNCH_BREAK_START: { label: 'On Lunch Break', color: 'text-amber-400', bg: 'bg-amber-900/30 border border-amber-800/50' },
+    LUNCH_BREAK_END: { label: 'Checked In', color: 'text-emerald-400', bg: 'bg-emerald-900/30 border border-emerald-800/50' },
     PUNCH_OUT: { label: 'Checked Out', color: 'text-slate-400', bg: 'bg-slate-800' },
   };
   const sc = statusConfig[currentAction] || statusConfig.NOT_STARTED;
@@ -115,7 +119,7 @@ export default function DashboardPage() {
             )}
           </div>
           <div className={`w-12 h-12 rounded-full flex items-center justify-center ${sc.color.replace('text-', 'bg-').replace('-400', '-500/20')}`}>
-            <div className={`w-4 h-4 rounded-full ${sc.color.replace('text-', 'bg-')} ${currentAction === 'PUNCH_IN' || currentAction === 'BREAK_END' ? 'animate-pulse' : ''}`} />
+            <div className={`w-4 h-4 rounded-full ${sc.color.replace('text-', 'bg-')} ${currentAction === 'PUNCH_IN' || currentAction === 'BREAK_END' || currentAction === 'TEA_BREAK_END' || currentAction === 'LUNCH_BREAK_END' ? 'animate-pulse' : ''}`} />
           </div>
         </div>
       )}

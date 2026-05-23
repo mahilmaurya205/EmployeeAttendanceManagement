@@ -9,7 +9,40 @@ const {
 } = require('../utils/access');
 const User = require('../models/User.model');
 
-const VALID_ACTIONS = ['PUNCH_IN', 'PUNCH_OUT', 'BREAK_START', 'BREAK_END'];
+const BREAK_TYPES = {
+  BREAK_START: 'GENERAL',
+  BREAK_END: 'GENERAL',
+  TEA_BREAK_START: 'TEA',
+  TEA_BREAK_END: 'TEA',
+  LUNCH_BREAK_START: 'LUNCH',
+  LUNCH_BREAK_END: 'LUNCH',
+};
+
+const VALID_ACTIONS = [
+  'PUNCH_IN',
+  'PUNCH_OUT',
+  'BREAK_START',
+  'BREAK_END',
+  'TEA_BREAK_START',
+  'TEA_BREAK_END',
+  'LUNCH_BREAK_START',
+  'LUNCH_BREAK_END',
+];
+
+const BREAK_START_ACTIONS = ['BREAK_START', 'TEA_BREAK_START', 'LUNCH_BREAK_START'];
+const BREAK_END_ACTIONS = ['BREAK_END', 'TEA_BREAK_END', 'LUNCH_BREAK_END'];
+
+const isBreakStart = (action) => BREAK_START_ACTIONS.includes(action);
+const isBreakEnd = (action) => BREAK_END_ACTIONS.includes(action);
+const getBreakType = (action) => BREAK_TYPES[action] || null;
+
+const getAllowedBreakMinutes = (breakType, attendancePolicy = {}) => {
+  if (breakType === 'TEA') return Number(attendancePolicy.teaBreakMinutes ?? 15);
+  if (breakType === 'LUNCH') return Number(attendancePolicy.lunchBreakMinutes ?? 40);
+  return 0;
+};
+
+const formatActionList = () => VALID_ACTIONS.join(', ');
 
 const getTodayStr = () => new Date().toISOString().split('T')[0];
 
@@ -42,25 +75,44 @@ const updateSummary = async (employeeId, date) => {
   const summary = await getOrCreateSummary(employeeId, date);
   const employee = await Employee.findById(employeeId).select('workSchedule');
   const adminSettings = await getAdminSettings(employee, { adminOwner: employee?.adminOwner });
-  const halfDayLateAfterMinutes = Number(adminSettings?.attendancePolicy?.halfDayLateAfterMinutes ?? 30);
+  const attendancePolicy = adminSettings?.attendancePolicy || {};
+  const halfDayLateAfterMinutes = Number(attendancePolicy.halfDayLateAfterMinutes ?? 30);
 
   let punchIn = null;
   let punchOut = null;
   const breaks = [];
   let currentBreakStart = null;
+  let currentBreakType = null;
 
   for (const log of logs) {
     if (log.action === 'PUNCH_IN' && !punchIn) punchIn = log.timestamp;
     if (log.action === 'PUNCH_OUT') punchOut = log.timestamp;
-    if (log.action === 'BREAK_START') currentBreakStart = log.timestamp;
-    if (log.action === 'BREAK_END' && currentBreakStart) {
+    if (isBreakStart(log.action)) {
+      currentBreakStart = log.timestamp;
+      currentBreakType = getBreakType(log.action);
+    }
+    if (isBreakEnd(log.action) && currentBreakStart && currentBreakType === getBreakType(log.action)) {
       const duration = Math.round((log.timestamp - currentBreakStart) / 60000);
-      breaks.push({ start: currentBreakStart, end: log.timestamp, duration });
+      const allowedDuration = getAllowedBreakMinutes(currentBreakType, attendancePolicy);
+      const lateByMinutes = Math.max(0, duration - allowedDuration);
+      breaks.push({
+        type: currentBreakType,
+        start: currentBreakStart,
+        end: log.timestamp,
+        duration,
+        allowedDuration,
+        lateByMinutes,
+      });
       currentBreakStart = null;
+      currentBreakType = null;
     }
   }
 
   const totalBreakMinutes = breaks.reduce((sum, item) => sum + item.duration, 0);
+  const teaBreakMinutes = breaks.filter((item) => item.type === 'TEA').reduce((sum, item) => sum + item.duration, 0);
+  const lunchBreakMinutes = breaks.filter((item) => item.type === 'LUNCH').reduce((sum, item) => sum + item.duration, 0);
+  const teaBreakLateByMinutes = breaks.filter((item) => item.type === 'TEA').reduce((sum, item) => sum + item.lateByMinutes, 0);
+  const lunchBreakLateByMinutes = breaks.filter((item) => item.type === 'LUNCH').reduce((sum, item) => sum + item.lateByMinutes, 0);
   let totalWorkMinutes = 0;
 
   if (punchIn && punchOut) {
@@ -108,6 +160,10 @@ const updateSummary = async (employeeId, date) => {
       punchOut,
       breaks,
       totalBreakMinutes,
+      teaBreakMinutes,
+      lunchBreakMinutes,
+      teaBreakLateByMinutes,
+      lunchBreakLateByMinutes,
       totalWorkMinutes,
       isLate,
       lateByMinutes,
@@ -149,7 +205,7 @@ exports.recordAttendanceAction = async (req, res, next) => {
     if (!VALID_ACTIONS.includes(action)) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid action. Must be PUNCH_IN, PUNCH_OUT, BREAK_START, or BREAK_END.',
+        message: `Invalid action. Must be one of: ${formatActionList()}.`,
       });
     }
 
@@ -231,11 +287,31 @@ exports.recordAttendanceAction = async (req, res, next) => {
     }).sort({ timestamp: 1 });
 
     const lastAction = todayLogs.length > 0 ? todayLogs[todayLogs.length - 1].action : null;
+    const activeBreakType = getBreakType(lastAction);
+    const breakStartedMessage = activeBreakType === 'TEA'
+      ? 'End your tea break first.'
+      : activeBreakType === 'LUNCH'
+        ? 'End your lunch break first.'
+        : 'End your break first.';
+    const punchOutBreakMessage = activeBreakType === 'TEA'
+      ? 'End your tea break before punching out.'
+      : activeBreakType === 'LUNCH'
+        ? 'End your lunch break before punching out.'
+        : 'End your break before punching out.';
+    const breakStartValidation = () => {
+      if (!lastAction || lastAction === 'PUNCH_OUT') return 'Punch in first.';
+      if (isBreakStart(lastAction)) return 'Already on break.';
+      return null;
+    };
     const actionValidations = {
-      PUNCH_IN: () => (lastAction === 'PUNCH_IN' ? 'Already punched in.' : lastAction === 'BREAK_START' ? 'End your break first.' : null),
-      PUNCH_OUT: () => (!lastAction || lastAction === 'PUNCH_OUT' ? 'Not punched in.' : lastAction === 'BREAK_START' ? 'End your break before punching out.' : null),
-      BREAK_START: () => (!lastAction || (lastAction !== 'PUNCH_IN' && lastAction !== 'BREAK_END') ? 'Punch in first.' : lastAction === 'BREAK_START' ? 'Already on break.' : null),
+      PUNCH_IN: () => (lastAction === 'PUNCH_IN' ? 'Already punched in.' : isBreakStart(lastAction) ? breakStartedMessage : null),
+      PUNCH_OUT: () => (!lastAction || lastAction === 'PUNCH_OUT' ? 'Not punched in.' : isBreakStart(lastAction) ? punchOutBreakMessage : null),
+      BREAK_START: breakStartValidation,
       BREAK_END: () => (lastAction !== 'BREAK_START' ? 'Not on break.' : null),
+      TEA_BREAK_START: breakStartValidation,
+      TEA_BREAK_END: () => (lastAction !== 'TEA_BREAK_START' ? 'Not on tea break.' : null),
+      LUNCH_BREAK_START: breakStartValidation,
+      LUNCH_BREAK_END: () => (lastAction !== 'LUNCH_BREAK_START' ? 'Not on lunch break.' : null),
     };
 
     const validationError = actionValidations[action]?.();
@@ -270,7 +346,7 @@ exports.recordAttendanceAction = async (req, res, next) => {
 
     res.json({
       success: true,
-      message: `${action.replace('_', ' ')} recorded successfully.`,
+      message: `${action.replace(/_/g, ' ')} recorded successfully.`,
       data: {
         action,
         timestamp: log.timestamp,
@@ -413,6 +489,108 @@ exports.getSummaryForDate = async (req, res, next) => {
     };
 
     res.json({ success: true, data: filtered, stats });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getLateBreakReport = async (req, res, next) => {
+  try {
+    const { date } = req.params;
+    const { department } = req.query;
+
+    const employeeFilter = { ...buildEmployeeScopeFilter(req.user), isActive: true };
+    if (department) employeeFilter.department = department;
+
+    const summaries = await AttendanceSummary.find({
+      date,
+      $or: [
+        { teaBreakLateByMinutes: { $gt: 0 } },
+        { lunchBreakLateByMinutes: { $gt: 0 } },
+      ],
+    })
+      .populate({
+        path: 'employee',
+        match: employeeFilter,
+        select: 'name employeeCode department designation',
+      })
+      .sort({ createdAt: 1 });
+
+    const data = summaries
+      .filter((summary) => summary.employee)
+      .map((summary) => ({
+        _id: summary._id,
+        date: summary.date,
+        employee: summary.employee,
+        totalLateMinutes: (summary.teaBreakLateByMinutes || 0) + (summary.lunchBreakLateByMinutes || 0),
+        tea: {
+          duration: summary.teaBreakMinutes || 0,
+          lateByMinutes: summary.teaBreakLateByMinutes || 0,
+          review: summary.teaBreakReview || { status: 'Pending' },
+        },
+        lunch: {
+          duration: summary.lunchBreakMinutes || 0,
+          lateByMinutes: summary.lunchBreakLateByMinutes || 0,
+          review: summary.lunchBreakReview || { status: 'Pending' },
+        },
+      }));
+
+    const stats = {
+      employees: data.length,
+      totalLateMinutes: data.reduce((sum, item) => sum + item.totalLateMinutes, 0),
+      pending: data.reduce((sum, item) => {
+        const teaPending = item.tea.lateByMinutes > 0 && item.tea.review?.status !== 'Approved' && item.tea.review?.status !== 'Rejected';
+        const lunchPending = item.lunch.lateByMinutes > 0 && item.lunch.review?.status !== 'Approved' && item.lunch.review?.status !== 'Rejected';
+        return sum + (teaPending ? 1 : 0) + (lunchPending ? 1 : 0);
+      }, 0),
+    };
+
+    res.json({ success: true, data, stats });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.reviewLateBreak = async (req, res, next) => {
+  try {
+    const { summaryId } = req.params;
+    const { breakType, status, reason, note } = req.body;
+
+    if (!['TEA', 'LUNCH'].includes(breakType)) {
+      return res.status(400).json({ success: false, message: 'breakType must be TEA or LUNCH.' });
+    }
+
+    if (!['Pending', 'Approved', 'Rejected'].includes(status)) {
+      return res.status(400).json({ success: false, message: 'status must be Pending, Approved, or Rejected.' });
+    }
+
+    const summary = await AttendanceSummary.findById(summaryId);
+    if (!summary) {
+      return res.status(404).json({ success: false, message: 'Attendance summary not found.' });
+    }
+
+    const employee = await findScopedEmployee(req.user, summary.employee);
+    if (!employee) {
+      return res.status(404).json({ success: false, message: 'Employee not found.' });
+    }
+
+    const review = {
+      status,
+      reason: reason ? String(reason).trim() : '',
+      note: note ? String(note).trim() : '',
+      reviewedBy: req.user._id,
+      reviewedAt: new Date(),
+    };
+
+    if (breakType === 'TEA') {
+      summary.teaBreakReview = review;
+    } else {
+      summary.lunchBreakReview = review;
+    }
+
+    await summary.save();
+
+    res.json({ success: true, message: 'Late break review updated.', data: summary });
   } catch (err) {
     next(err);
   }
